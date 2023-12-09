@@ -1,10 +1,29 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { MongooseModule } from '@nestjs/mongoose';
+import { UserModule } from './user/user.module';
+import { AuthModule } from './auth/auth.module';
+import { AccessTokenGuard } from './shared/guard';
 
 @Module({
-  imports: [],
-  controllers: [AppController],
-  providers: [AppService],
+    imports: [
+        ConfigModule.forRoot({ isGlobal: true }),
+        MongooseModule.forRootAsync({
+            imports: [ConfigModule],
+            useFactory: async (configService: ConfigService) => ({
+                uri: configService.get<string>('DATABASE_URI'),
+                dbName: configService.get<string>('DATABASE_NAME'),
+            }),
+            inject: [ConfigService],
+        }),
+        AuthModule,
+        UserModule
+    ],
+    providers: [
+        {
+            provide: 'APP_GUARD',
+            useClass: AccessTokenGuard
+        }
+    ],
 })
-export class AppModule {}
+export class AppModule { }
