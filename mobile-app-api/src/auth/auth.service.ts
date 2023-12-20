@@ -36,10 +36,10 @@ export class AuthService {
         user.uuid = uuidv4();
         user.password = await this.hashPassword(user.password);
 
-        const savedUser = await this.userService.create(user);
-        const accessToken = await this.generateAccessToken(savedUser.uuid);
+        const createdUser = await this.userService.create(user);
+        const accessToken = await this.generateAccessToken(createdUser.uuid);
         
-        const response = plainToClass(SignInRes, savedUser);
+        const response = plainToClass(SignInRes, createdUser);
         response.accessToken = accessToken;
 
         return response;

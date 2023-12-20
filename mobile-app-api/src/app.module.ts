@@ -4,6 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { AccessTokenGuard } from './shared/guard';
+import { LocationModule } from './location/location.module';
 
 @Module({
     imports: [
@@ -17,7 +18,8 @@ import { AccessTokenGuard } from './shared/guard';
             inject: [ConfigService],
         }),
         AuthModule,
-        UserModule
+        UserModule,
+        LocationModule
     ],
     providers: [
         {
