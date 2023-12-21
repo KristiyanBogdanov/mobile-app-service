@@ -20,4 +20,11 @@ export class UserService {
     async findByUuid(uuid: string): Promise<User & Document> {
         return await this.userRepository.findOne({ uuid });
     }
+
+    async addLocation(userUuid: string, locationUuid: string) {
+        await this.userRepository.updateOne(
+            { uuid: userUuid },
+            { $addToSet: { locations: locationUuid } }
+        )
+    }
 }

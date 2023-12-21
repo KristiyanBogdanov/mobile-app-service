@@ -9,7 +9,6 @@ export class AuthController {
 
     @AuthNotRequired()
     @Post('/signup')
-    @HttpCode(HttpStatus.CREATED)
     async signup(@Body() signupData: SignUpReq): Promise<SignInRes> {
         return await this.authService.signup(signupData);
     }
