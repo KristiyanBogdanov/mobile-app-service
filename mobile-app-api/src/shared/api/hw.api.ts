@@ -1,27 +1,25 @@
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-class HwApiUtil {
-    private static readonly baseUrl = new ConfigService().get<string>('HW_API_URL');
+@Injectable()
+export class HwApi {
+    private readonly baseUrl: string;
+    private readonly solarTracker = 'solar-tracker';
+    private readonly weatherStation = 'weather-station';
 
-    static createApiEndpoint(apiPath: string): string {
+    constructor(private readonly configService: ConfigService) {
+        this.baseUrl = this.configService.get<string>('HW_API_URL');
+    }
+    
+    private createApiEndpoint(apiPath: string): string {
         return `${this.baseUrl}/${apiPath}`;
     }
-}
 
-export namespace HwApi {
-    export namespace SolarTracker {
-        const solarTracker = 'solar-tracker';
-        
-        export function validateSerialNumber(serialNumber: string): string {
-            return HwApiUtil.createApiEndpoint(`${solarTracker}/validate/${serialNumber}`);
-        }
+    validateSTSerialNumber(serialNumber: string): string {
+        return this.createApiEndpoint(`${this.solarTracker}/validate/${serialNumber}`);
     }
 
-    export namespace WeatherStation {
-        const weatherStation = 'weather-station';
-
-        export function validateSerialNumber(serialNumber: string): string {
-            return HwApiUtil.createApiEndpoint(`${weatherStation}/validate/${serialNumber}`);
-        }
+    validateWSSerialNumber(serialNumber: string): string {
+        return this.createApiEndpoint(`${this.weatherStation}/validate/${serialNumber}`);
     }
 }

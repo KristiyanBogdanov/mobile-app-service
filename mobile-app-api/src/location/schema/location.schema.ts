@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Exclude, Expose } from 'class-transformer';
-import { ArrayMinSize, IsArray, IsOptional, IsPositive, IsString, MaxLength } from 'class-validator';
+import { ArrayMinSize, IsArray, IsNotEmpty, IsOptional, IsPositive, IsString, MaxLength } from 'class-validator';
 import { LOCATION_NAME_MAX_LENGTH } from '../../shared/constants';
 import { ILocation } from '../interface';
 
@@ -27,6 +27,7 @@ export class Location implements ILocation {
 
     @Expose()
     @IsString()
+    @IsNotEmpty()
     @Prop({ required: true })
     location: string;
 
@@ -40,19 +41,21 @@ export class Location implements ILocation {
     @IsArray()
     @ArrayMinSize(1)
     @IsString({ each: true })
+    @IsNotEmpty({ each: true })
     @Prop({ required: true, min: 1 })
     solarTrackers: string[];
 
-    // TODO: TEST THIS (dto must be empty string?)
     @Expose()
     @IsOptional()
     @IsString()
+    @IsNotEmpty()
     @Prop()
     weatherStation: string;
 
     @Expose()
     @IsOptional()
     @IsString()
+    @IsNotEmpty()
     @Prop()
     cctv: string;
 

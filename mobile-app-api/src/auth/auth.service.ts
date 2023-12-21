@@ -6,6 +6,7 @@ import * as bcrypt from 'bcrypt';
 import { plainToClass } from 'class-transformer';
 import { User } from '../user/schema';
 import { UserService } from '../user/user.service';
+import { LocationService } from '../location/location.service';
 import { SignInReq, SignInRes, SignUpReq } from './dto';
 import { JwtPayload } from './type';
 
@@ -13,6 +14,7 @@ import { JwtPayload } from './type';
 export class AuthService {
     constructor(
         private readonly userService: UserService,
+        private readonly locationService: LocationService,
         private readonly configService: ConfigService,
         private readonly jwtService: JwtService,
     ) { }
@@ -40,6 +42,7 @@ export class AuthService {
         const accessToken = await this.generateAccessToken(createdUser.uuid);
         
         const response = plainToClass(SignInRes, createdUser);
+        response.locations = [];
         response.accessToken = accessToken;
 
         return response;
@@ -58,10 +61,9 @@ export class AuthService {
             throw new UnauthorizedException('Invalid password');
         }
 
-        const accessToken = await this.generateAccessToken(user.uuid);
-
         const response = plainToClass(SignInRes, user);
-        response.accessToken = accessToken;
+        response.locations = await this.locationService.fetchAll(user.uuid, user.locations);
+        response.accessToken = await this.generateAccessToken(user.uuid);;
 
         return response;
     }
@@ -73,6 +75,6 @@ export class AuthService {
             throw new UnauthorizedException('Invalid token');
         }
 
-        return plainToClass(User, user.toObject());
+        return plainToClass(User, user);
     }
 }

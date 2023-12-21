@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { HttpModule } from '@nestjs/axios';
 import { UserModule } from '../user/user.module';
+import { HwApi } from '../shared/api';
 import { Location, LocationSchema } from './schema';
 import { LocationRepository } from './repository';
 import { LocationService } from './location.service';
@@ -18,7 +19,11 @@ import { LocationController } from './location.controller';
     controllers: [LocationController],
     providers: [
         LocationService,
-        LocationRepository
+        LocationRepository,
+        HwApi
     ],
+    exports: [
+        LocationService
+    ]
 })
 export class LocationModule { }
