@@ -53,7 +53,7 @@ export class LocationService {
         return locationDto;
     }
 
-    async add(userUuid: string, locationData: AddLocationReq): Promise<LocationDto> {
+    async addNew(userUuid: string, locationData: AddLocationReq): Promise<LocationDto> {
         for (const serialNumber of locationData.solarTrackers) {
             const result = await this.validateSTSerialNumber(userUuid, serialNumber);
 
@@ -91,5 +91,32 @@ export class LocationService {
         return locations.map((location) => {
             return this.mapToLocationDto(userUuid, location);
         });
+    }
+
+    // TODO: add share requests that need to be accepted by the owner in the future
+    async addExisting(userUuid: string, locationUuid: string): Promise<LocationDto> {
+        const location = await this.locationRepository.findOne({ uuid: locationUuid });
+
+        if (!location) {
+            throw new BadRequestException(`Invalid location uuid: ${locationUuid}`);
+        }
+
+        if (location.owner === userUuid) {
+            throw new ConflictException('You are the owner of this location');
+        }
+
+        if (location.sharedWith.includes(userUuid)) {
+            throw new ConflictException('You have already shared this location');
+        }
+
+        const result = await this.locationRepository.shareWith(userUuid, locationUuid);
+
+        if (result === 0) {
+            throw new ConflictException('Failed to add location');
+        }
+
+        this.userService.addLocation(userUuid, locationUuid);
+        
+        return this.mapToLocationDto(userUuid, location);
     }
 }

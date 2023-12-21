@@ -23,8 +23,14 @@ export class LocationController {
     }
 
     @Post()
-    async add(@Req() request: Request, @Body() locationData: AddLocationReq): Promise<LocationDto> {
+    async addNew(@Req() request: Request, @Body() locationData: AddLocationReq): Promise<LocationDto> {
         const user = request.user as User;
-        return await this.service.add(user.uuid, locationData);
+        return await this.service.addNew(user.uuid, locationData);
+    }
+
+    @Post('/:locationUuid')
+    async addExisting(@Req() request: Request, @Param('locationUuid') locationUuid: string): Promise<LocationDto> {
+        const user = request.user as User;
+        return await this.service.addExisting(user.uuid, locationUuid);
     }
 }
