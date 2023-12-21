@@ -9,4 +9,8 @@ export class LocationRepository extends EntityRepository<Location> {
     constructor(@InjectModel(Location.name) model: Model<Location>) {
         super(model);
     }
+
+    async findAllWithUuidIn(uuids: string[]): Promise<Location[]> {
+        return await this.find({ uuid: { $in: uuids } });
+    }
 }

@@ -9,4 +9,11 @@ export class UserRepository extends EntityRepository<User> {
     constructor(@InjectModel(User.name) model: Model<User>) {
         super(model);
     }
+
+    async addLocation(userUuid: string, locationUuid: string): Promise<number> {
+        return await this.updateOne(
+            { uuid: userUuid },
+            { $addToSet: { locations: locationUuid } }
+        );
+    }
 }

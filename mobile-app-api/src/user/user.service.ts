@@ -13,18 +13,15 @@ export class UserService {
         return await this.userRepository.create(user);
     }
 
-    async findByEmail(email: string): Promise<User & Document> {
+    async findByEmail(email: string): Promise<User> {
         return await this.userRepository.findOne({ email });
     }
 
-    async findByUuid(uuid: string): Promise<User & Document> {
+    async findByUuid(uuid: string): Promise<User> {
         return await this.userRepository.findOne({ uuid });
     }
 
     async addLocation(userUuid: string, locationUuid: string) {
-        await this.userRepository.updateOne(
-            { uuid: userUuid },
-            { $addToSet: { locations: locationUuid } }
-        )
+        await this.userRepository.addLocation(userUuid, locationUuid);
     }
 }
