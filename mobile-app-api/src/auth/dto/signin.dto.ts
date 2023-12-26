@@ -1,6 +1,6 @@
 import { PickType } from '@nestjs/mapped-types';
 import { Exclude } from 'class-transformer';
-import { IsEmail, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 import { LocationDto } from '../../location/dto';
 import { User } from '../../user/schema';
 
@@ -9,6 +9,7 @@ export class SignInReq {
     email: string;
 
     @IsString()
+    @IsNotEmpty()
     password: string;
 }
 

@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcrypt';
 import { plainToClass } from 'class-transformer';
+import { ErrorCode, createHttpExceptionBody } from '../shared/exception';
 import { User } from '../user/schema';
 import { UserService } from '../user/user.service';
 import { LocationService } from '../location/location.service';
@@ -52,13 +53,17 @@ export class AuthService {
         const user = await this.userService.findByEmail(signinData.email);
 
         if (!user) {
-            throw new UnauthorizedException('Invalid email');
+            throw new UnauthorizedException(
+                createHttpExceptionBody(ErrorCode.InvalidEmail, 'Invalid email')
+            );
         }
 
         const isPasswordValid = await bcrypt.compare(signinData.password, user.password);
 
         if (!isPasswordValid) {
-            throw new UnauthorizedException('Invalid password');
+            throw new UnauthorizedException(
+                createHttpExceptionBody(ErrorCode.InvalidPassword, 'Invalid password')
+            );
         }
 
         const response = plainToClass(SignInRes, user);
@@ -72,7 +77,9 @@ export class AuthService {
         const user = await this.userService.findByUuid(payload.sub);
 
         if (!user || user.uuid !== payload.sub) {
-            throw new UnauthorizedException('Invalid token');
+            throw new UnauthorizedException(
+                createHttpExceptionBody(ErrorCode.InvalidAccessToken, 'Invalid access token')
+            );
         }
 
         return plainToClass(User, user);

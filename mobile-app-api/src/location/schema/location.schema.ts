@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Exclude, Expose } from 'class-transformer';
 import { ArrayMinSize, IsArray, IsNotEmpty, IsOptional, IsPositive, IsString, MaxLength } from 'class-validator';
+import { ErrorCode } from '../../shared/exception';
 import { LOCATION_NAME_MAX_LENGTH } from '../../shared/constants';
 import { ILocation } from '../interface';
 
@@ -21,7 +22,7 @@ export class Location implements ILocation {
 
     @Expose()
     @IsString()
-    @MaxLength(LOCATION_NAME_MAX_LENGTH, { message: 'location name is too long' })
+    @MaxLength(LOCATION_NAME_MAX_LENGTH, { context: { errorCode: ErrorCode.TooLongLocationName } })
     @Prop({ required: true })
     name: string;
 

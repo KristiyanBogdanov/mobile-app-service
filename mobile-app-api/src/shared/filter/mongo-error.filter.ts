@@ -9,9 +9,11 @@ export class MongoErrorFilter implements ExceptionFilter {
 
         const mongoErrorResponse = (status: HttpStatus) => {
             response.status(status).json({
-                error: error.name,
-                code: error.code,
-                message: error.message
+                error: {
+                    name: error.name,
+                    code: error.code,
+                    message: error.message,
+                }
             });
         };
 

@@ -1,10 +1,11 @@
-import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { v4 as uuidv4 } from 'uuid';
 import { lastValueFrom } from 'rxjs';
 import { plainToClass } from 'class-transformer';
 import { UserService } from '../user/user.service';
 import { HwApi } from '../shared/api';
+import { ErrorCode, createHttpExceptionBody } from '../shared/exception';
 import { LocationRepository } from './repository';
 import { Location } from './schema';
 import { AddLocationReq, LocationDto, ValidateSerialNumberHwApiRes, ValidateSerialNumberRes } from './dto';
@@ -58,11 +59,15 @@ export class LocationService {
             const result = await this.validateSTSerialNumber(userUuid, serialNumber);
 
             if (!result.isValid) {
-                throw new BadRequestException(`Invalid solar tracker serial number: ${serialNumber}`);
+                throw new BadRequestException(
+                    createHttpExceptionBody(ErrorCode.InvalidSTSerialNumber, `Invalid solar tracker serial number: ${serialNumber}`)
+                );
             }
 
             if (result.isUsed) {
-                throw new ConflictException(`Solar tracker serial number: ${serialNumber} is already used`);
+                throw new ConflictException(
+                    createHttpExceptionBody(ErrorCode.STSerialNumberAlreadyUsed, `Solar tracker serial number ${serialNumber} is already used`)
+                );
             }
         }
 
@@ -70,7 +75,9 @@ export class LocationService {
             const result = await this.validateWSSerialNumber(locationData.weatherStation);
 
             if (!result.isValid) {
-                throw new BadRequestException(`Invalid weather station serial number: ${locationData.weatherStation}`);
+                throw new BadRequestException(
+                    createHttpExceptionBody(ErrorCode.InvalidWSSerialNumber, `Invalid weather station serial number: ${locationData.weatherStation}`)
+                );
             }
         }
 
@@ -98,21 +105,23 @@ export class LocationService {
         const location = await this.locationRepository.findOne({ uuid: locationUuid });
 
         if (!location) {
-            throw new BadRequestException(`Invalid location uuid: ${locationUuid}`);
-        }
-
-        if (location.owner === userUuid) {
-            throw new ConflictException('You are the owner of this location');
+            throw new BadRequestException(
+                createHttpExceptionBody(ErrorCode.InvalidLocationUuid, `Invalid location uuid: ${locationUuid}`)
+            );
         }
 
         if (location.sharedWith.includes(userUuid)) {
-            throw new ConflictException('You have already shared this location');
+            throw new ConflictException(
+                createHttpExceptionBody(ErrorCode.LocationAlreadyAdded, `Location ${locationUuid} is already added`)
+            );
         }
 
         const result = await this.locationRepository.shareWith(userUuid, locationUuid);
 
         if (result === 0) {
-            throw new ConflictException('Failed to add location');
+            throw new InternalServerErrorException(
+                createHttpExceptionBody(ErrorCode.FailedToAddLocation, `Failed to add location ${locationUuid}`)
+            );
         }
 
         this.userService.addLocation(userUuid, locationUuid);

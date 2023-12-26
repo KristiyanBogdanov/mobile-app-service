@@ -1,5 +1,6 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { Document } from 'mongoose';
+import { ErrorCode, createHttpExceptionBody } from '../shared/exception';
 import { UserRepository } from './repository';
 import { User } from './schema';
 
@@ -25,9 +26,9 @@ export class UserService {
         const result = await this.userRepository.addLocation(userUuid, locationUuid);
 
         if (result === 0) {
-            throw new InternalServerErrorException('Failed to add location');
+            throw new InternalServerErrorException(
+                createHttpExceptionBody(ErrorCode.FailedToAddLocation, 'Failed to add location to user')
+            );
         }
     }
 }
-
-// TODO: add validation for all update methods

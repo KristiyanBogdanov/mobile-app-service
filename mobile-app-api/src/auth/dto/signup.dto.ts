@@ -1,17 +1,15 @@
-import { IsEmail, IsString, IsStrongPassword, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, IsStrongPassword, MinLength } from 'class-validator';
 import { STRONG_PASSWORD_OPTIONS, USERNAME_MIN_LENGTH } from '../../shared/constants'
+import { ErrorCode } from '../../shared/exception/error-codes';
 
-/*
-    @Info: Custom error messages are specified exclusively for user text-input fields.
-*/
 export class SignUpReq {
     @IsString()
-    @MinLength(USERNAME_MIN_LENGTH, { message: 'Username is too short' })
+    @MinLength(USERNAME_MIN_LENGTH, { context: { errorCode: ErrorCode.TooShortUsername } })
     username: string;
 
-    @IsEmail({}, { message: 'Invalid email' })
+    @IsEmail({}, { context: { errorCode: ErrorCode.InvalidEmailFormat } })
     email: string;
 
-    @IsStrongPassword(STRONG_PASSWORD_OPTIONS, { message: 'Password is too weak' })
+    @IsStrongPassword(STRONG_PASSWORD_OPTIONS, { context: { errorCode: ErrorCode.WeakPassword } })
     password: string;
 }

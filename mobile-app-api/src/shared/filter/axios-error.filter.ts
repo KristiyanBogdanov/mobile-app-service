@@ -8,9 +8,11 @@ export class AxiosErrorFilter implements ExceptionFilter {
         const response = ctx.getResponse();
 
         response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-            error: 'AxiosError',
-            code: error.code,
-            message: error.message
+            error: {
+                name: error.name,
+                code: error.code,
+                message: error.message
+            }
         });
     }
 }
