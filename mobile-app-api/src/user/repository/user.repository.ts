@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { ClientSession, Document, FilterQuery, Model } from 'mongoose';
 import { EntityRepository } from '../../shared/database';
 import { User } from '../schema';
 
@@ -10,10 +10,20 @@ export class UserRepository extends EntityRepository<User> {
         super(model);
     }
 
-    async addLocation(userUuid: string, locationUuid: string): Promise<number> {
+    async findOne(
+        entityFilterQuery: FilterQuery<User>, 
+        projection?: Record<string, unknown>,
+        options?: Record<string, unknown>
+    ): Promise<(User & Document) | null> {
+        return await super.findOne(entityFilterQuery, projection, options)
+            .then((user) => user?.populate('locations'));
+    }
+
+    async addLocation(userUuid: string, locationOid: string, session: ClientSession): Promise<number> {
         return await this.updateOne(
             { uuid: userUuid },
-            { $addToSet: { locations: locationUuid } }
+            { $addToSet: { locations: locationOid } },
+            { session }
         );
     }
 }

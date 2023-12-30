@@ -3,11 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcrypt';
-import { plainToClass } from 'class-transformer';
-import { ErrorCode, createHttpExceptionBody } from '../shared/exception';
+import { ErrorCode } from '../shared/exception';
 import { User } from '../user/schema';
 import { UserService } from '../user/user.service';
-import { LocationService } from '../location/location.service';
 import { SignInReq, SignInRes, SignUpReq } from './dto';
 import { JwtPayload } from './type';
 
@@ -15,7 +13,6 @@ import { JwtPayload } from './type';
 export class AuthService {
     constructor(
         private readonly userService: UserService,
-        private readonly locationService: LocationService,
         private readonly configService: ConfigService,
         private readonly jwtService: JwtService,
     ) { }
@@ -25,9 +22,7 @@ export class AuthService {
         return await bcrypt.hash(password, salt);
     }
 
-    private async generateAccessToken(uuid: string): Promise<string> {
-        const jwtPayload: JwtPayload = { sub: uuid };
-
+    private async generateAccessToken(jwtPayload: JwtPayload): Promise<string> {
         return await this.jwtService.signAsync(jwtPayload, {
             secret: this.configService.get<string>('ACCESS_TOKEN_SECRET'),
             expiresIn: this.configService.get<string>('ACCESS_TOKEN_EXPIRES_IN'),
@@ -35,53 +30,37 @@ export class AuthService {
     }
 
     async signup(sigupData: SignUpReq): Promise<SignInRes> {
-        const user = plainToClass(User, sigupData);
+        const user = new User(sigupData);
         user.uuid = uuidv4();
         user.password = await this.hashPassword(user.password);
 
         const createdUser = await this.userService.create(user);
-        const accessToken = await this.generateAccessToken(createdUser.uuid);
-        
-        const response = plainToClass(SignInRes, createdUser);
-        response.locations = [];
-        response.accessToken = accessToken;
+        const userDto = this.userService.mapToUserDto(createdUser);
 
-        return response;
+        return new SignInRes({
+            ...userDto,
+            accessToken: await this.generateAccessToken({ sub: createdUser.uuid })
+        });
     }
 
     async signin(signinData: SignInReq): Promise<SignInRes> {
         const user = await this.userService.findByEmail(signinData.email);
 
         if (!user) {
-            throw new UnauthorizedException(
-                createHttpExceptionBody(ErrorCode.InvalidEmail, 'Invalid email')
-            );
+            throw new UnauthorizedException(ErrorCode.InvalidEmail);
         }
 
         const isPasswordValid = await bcrypt.compare(signinData.password, user.password);
 
         if (!isPasswordValid) {
-            throw new UnauthorizedException(
-                createHttpExceptionBody(ErrorCode.InvalidPassword, 'Invalid password')
-            );
+            throw new UnauthorizedException(ErrorCode.InvalidPassword);
         }
 
-        const response = plainToClass(SignInRes, user);
-        response.locations = await this.locationService.fetchAll(user.uuid, user.locations);
-        response.accessToken = await this.generateAccessToken(user.uuid);;
-
-        return response;
-    }
-
-    async validatePayload(payload: JwtPayload): Promise<User> {
-        const user = await this.userService.findByUuid(payload.sub);
-
-        if (!user || user.uuid !== payload.sub) {
-            throw new UnauthorizedException(
-                createHttpExceptionBody(ErrorCode.InvalidAccessToken, 'Invalid access token')
-            );
-        }
-
-        return plainToClass(User, user);
+        const userDto = this.userService.mapToUserDto(user);
+        
+        return new SignInRes({
+            ...userDto,
+            accessToken: await this.generateAccessToken({ sub: user.uuid })
+        });
     }
 }

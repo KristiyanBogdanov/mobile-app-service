@@ -7,23 +7,12 @@ export class MongoErrorFilter implements ExceptionFilter {
         const ctx = host.switchToHttp();
         const response = ctx.getResponse();
 
-        const mongoErrorResponse = (status: HttpStatus) => {
-            response.status(status).json({
-                error: {
-                    name: error.name,
-                    code: error.code,
-                    message: error.message,
-                }
-            });
-        };
-
-        switch (error.code) {
-            case 11000:
-                mongoErrorResponse(HttpStatus.CONFLICT);
-                break;
-            default:
-                mongoErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR);
-                break;
-        }
+        response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+            error: {
+                type: error.name,
+                mongoCode: error.code,
+                message: error.message,
+            }
+        });
     }
 }	

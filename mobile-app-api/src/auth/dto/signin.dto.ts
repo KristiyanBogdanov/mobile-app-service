@@ -1,8 +1,6 @@
-import { PickType } from '@nestjs/mapped-types';
-import { Exclude } from 'class-transformer';
 import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
-import { LocationDto } from '../../location/dto';
-import { User } from '../../user/schema';
+import { Exclude } from 'class-transformer';
+import { UserDto } from '../../user/dto';
 
 export class SignInReq {
     @IsEmail()
@@ -14,11 +12,11 @@ export class SignInReq {
 }
 
 @Exclude()
-export class SignInRes extends PickType(User, [
-    'uuid',
-    'username',
-    'email',
-]) {
-    locations: LocationDto[];
+export class SignInRes extends UserDto {
     accessToken: string;
+
+    constructor(userDto: Partial<SignInRes>) {
+        super();
+        Object.assign(this, userDto);
+    }
 }

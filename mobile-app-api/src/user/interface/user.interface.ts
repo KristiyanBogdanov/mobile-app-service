@@ -1,9 +1,11 @@
+import { ILocation } from '../../location/interface';
+
 export interface IUser {
     uuid: string;
     username: string;
     email: string;
     password: string;
-    locations: string[];
+    locations: ILocation[];
 
     // TODO: Add this later
     // country: string;

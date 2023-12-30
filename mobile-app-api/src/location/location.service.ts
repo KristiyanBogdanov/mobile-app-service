@@ -2,10 +2,11 @@ import { BadRequestException, ConflictException, Injectable, InternalServerError
 import { HttpService } from '@nestjs/axios';
 import { v4 as uuidv4 } from 'uuid';
 import { lastValueFrom } from 'rxjs';
+import { ClientSession } from 'mongoose';
 import { plainToClass } from 'class-transformer';
-import { UserService } from '../user/user.service';
 import { HwApi } from '../shared/api';
-import { ErrorCode, createHttpExceptionBody } from '../shared/exception';
+import { ErrorCode } from '../shared/exception';
+import { BriefUserInfo } from '../user/schema';
 import { LocationRepository } from './repository';
 import { Location } from './schema';
 import { AddLocationReq, LocationDto, ValidateSerialNumberHwApiRes, ValidateSerialNumberRes } from './dto';
@@ -15,11 +16,10 @@ export class LocationService {
     constructor(
         private readonly hwApi: HwApi,
         private readonly httpService: HttpService,
-        private readonly userService: UserService,
         private readonly locationRepository: LocationRepository
     ) { }
 
-    async validateSTSerialNumber(userUuid: string, serialNumber: string): Promise<ValidateSerialNumberRes> {
+    async validateSTSerialNumber(userUuid: string, serialNumber: string, session?: ClientSession): Promise<ValidateSerialNumberRes> {
         const isValid = await lastValueFrom(
             this.httpService.get<ValidateSerialNumberHwApiRes>(this.hwApi.validateSTSerialNumber(serialNumber))
         ).then((response) => response.data.isValid);
@@ -28,10 +28,10 @@ export class LocationService {
             return { isValid };
         }
 
-        const location = await this.locationRepository.findOne({ solarTrackers: serialNumber });
+        const location = await this.locationRepository.findOne({ solarTrackers: serialNumber }, {}, { session });
 
         if (location) {
-            const isAdded = location.sharedWith.includes(userUuid);
+            const isAdded = location.sharedWith.some((user) => user.uuid === userUuid);
             return { isValid, isUsed: true, isAdded };
         }
 
@@ -46,28 +46,24 @@ export class LocationService {
         return { isValid };
     }
 
-    private mapToLocationDto(userUuid: string, location: Location): LocationDto {
-        const locationDto = plainToClass(LocationDto, location);
+    mapToLocationDto(userUuid: string, location: Location): LocationDto {
+        const locationDto = plainToClass(LocationDto, location, { enableCircularCheck: true }); // TODO: try to remove enableCircularCheck
+        locationDto.sharedWith = locationDto.sharedWith.filter((user) => user.uuid !== userUuid);
         locationDto.amIOwner = location.owner === userUuid;
-        locationDto.sharedWith = locationDto.sharedWith.filter((uuid) => uuid !== userUuid);
 
         return locationDto;
     }
 
-    async addNew(userUuid: string, locationData: AddLocationReq): Promise<LocationDto> {
+    async addNew(briefUser: BriefUserInfo, locationData: AddLocationReq, session: ClientSession): Promise<Location> {
         for (const serialNumber of locationData.solarTrackers) {
-            const result = await this.validateSTSerialNumber(userUuid, serialNumber);
+            const result = await this.validateSTSerialNumber(briefUser.uuid, serialNumber, session);
 
             if (!result.isValid) {
-                throw new BadRequestException(
-                    createHttpExceptionBody(ErrorCode.InvalidSTSerialNumber, `Invalid solar tracker serial number: ${serialNumber}`)
-                );
+                throw new BadRequestException(ErrorCode.InvalidSTSerialNumber);
             }
 
             if (result.isUsed) {
-                throw new ConflictException(
-                    createHttpExceptionBody(ErrorCode.STSerialNumberAlreadyUsed, `Solar tracker serial number ${serialNumber} is already used`)
-                );
+                throw new ConflictException(ErrorCode.STSerialNumberAlreadyUsed);
             }
         }
 
@@ -75,57 +71,36 @@ export class LocationService {
             const result = await this.validateWSSerialNumber(locationData.weatherStation);
 
             if (!result.isValid) {
-                throw new BadRequestException(
-                    createHttpExceptionBody(ErrorCode.InvalidWSSerialNumber, `Invalid weather station serial number: ${locationData.weatherStation}`)
-                );
+                throw new BadRequestException(ErrorCode.InvalidWSSerialNumber);
             }
         }
 
         const location = plainToClass(Location, locationData);
         location.uuid = uuidv4();
-        location.owner = userUuid;
-        location.sharedWith = [userUuid];
+        location.owner = briefUser.uuid;
+        location.sharedWith = [briefUser];
 
-        const createdLocation = await this.locationRepository.create(location);
-        this.userService.addLocation(userUuid, createdLocation.uuid);
-
-        return this.mapToLocationDto(userUuid, createdLocation);
-    }
-
-    async fetchAll(userUuid: string, locationUuids: string[]): Promise<LocationDto[]> {
-        const locations = await this.locationRepository.findAllWithUuidIn(locationUuids);
-
-        return locations.map((location) => {
-            return this.mapToLocationDto(userUuid, location);
-        });
+        return await this.locationRepository.createInSession(location, session);
     }
 
     // TODO: add share requests that need to be accepted by the owner in the future
-    async addExisting(userUuid: string, locationUuid: string): Promise<LocationDto> {
-        const location = await this.locationRepository.findOne({ uuid: locationUuid });
+    async share(briefUser: BriefUserInfo, locationUuid: string, session: ClientSession): Promise<Location> {
+        const location = await this.locationRepository.findOne({ uuid: locationUuid }, {}, { session });
 
         if (!location) {
-            throw new BadRequestException(
-                createHttpExceptionBody(ErrorCode.InvalidLocationUuid, `Invalid location uuid: ${locationUuid}`)
-            );
+            throw new BadRequestException(ErrorCode.InvalidLocationUuid);
         }
 
-        if (location.sharedWith.includes(userUuid)) {
-            throw new ConflictException(
-                createHttpExceptionBody(ErrorCode.LocationAlreadyAdded, `Location ${locationUuid} is already added`)
-            );
+        if (location.sharedWith.some((user) => user.uuid === briefUser.uuid)) {
+            throw new ConflictException(ErrorCode.LocationAlreadyAdded);
         }
 
-        const result = await this.locationRepository.shareWith(userUuid, locationUuid);
+        const result = await this.locationRepository.shareWith(briefUser, locationUuid, session);
 
         if (result === 0) {
-            throw new InternalServerErrorException(
-                createHttpExceptionBody(ErrorCode.FailedToAddLocation, `Failed to add location ${locationUuid}`)
-            );
+            throw new InternalServerErrorException(ErrorCode.FailedToAddLocation);
         }
 
-        this.userService.addLocation(userUuid, locationUuid);
-        
-        return this.mapToLocationDto(userUuid, location);
+        return location;
     }
 }

@@ -1,7 +1,8 @@
-import { ExecutionContext, Injectable } from '@nestjs/common';
+import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { AUTH_NOT_REQUIRED } from '../decorator';
+import { ErrorCode } from '../exception';
 
 @Injectable()
 export class AccessTokenGuard extends AuthGuard('jwt') {
@@ -20,5 +21,13 @@ export class AccessTokenGuard extends AuthGuard('jwt') {
         }
 
         return super.canActivate(context);
+    }
+
+    handleRequest(err: any, user: any, info: any) {
+        if (err || !user) {
+            throw new UnauthorizedException(ErrorCode.InvalidAccessToken);
+        }
+
+        return user;
     }
 }

@@ -9,8 +9,8 @@ export class AxiosErrorFilter implements ExceptionFilter {
 
         response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
             error: {
-                name: error.name,
-                code: error.code,
+                type: error.name,
+                axiosCode: error.code,
                 message: error.message
             }
         });

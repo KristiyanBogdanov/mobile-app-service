@@ -1,5 +1,5 @@
 import { PickType } from '@nestjs/mapped-types';
-import { Exclude, Expose } from 'class-transformer';
+import { Exclude } from 'class-transformer';
 import { Location } from '../schema';
 
 @Exclude()
@@ -11,8 +11,7 @@ export class LocationDto extends PickType(Location, [
     'solarTrackers',
     'weatherStation',
     'cctv',
-    'sharedWith'
+    'sharedWith',
 ]) {
-    @Expose() 
     amIOwner: boolean;
 }

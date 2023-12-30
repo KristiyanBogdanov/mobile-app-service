@@ -1,15 +1,20 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Exclude, Expose } from 'class-transformer';
-import { ArrayMinSize, IsArray, IsNotEmpty, IsOptional, IsPositive, IsString, MaxLength } from 'class-validator';
+import { Exclude, Expose, Transform, Type } from 'class-transformer';
+import { ArrayMinSize, IsArray, IsInt, IsNotEmpty, IsOptional, IsPositive, IsString, Length } from 'class-validator';
 import { ErrorCode } from '../../shared/exception';
-import { LOCATION_NAME_MAX_LENGTH } from '../../shared/constants';
+import { LOCATION_NAME_MAX_LENGTH, LOCATION_NAME_MIN_LENGTH } from '../../shared/constants';
+import { BriefUserInfo } from '../../user/schema';
 import { ILocation } from '../interface';
 
 @Exclude()
 @Schema({
     collection: 'locations',
+    versionKey: false,
 })
 export class Location implements ILocation {
+    @Transform(({ value }) => value.toString())
+    _id: string;
+
     @Expose()
     @Prop({
         index: {
@@ -22,7 +27,10 @@ export class Location implements ILocation {
 
     @Expose()
     @IsString()
-    @MaxLength(LOCATION_NAME_MAX_LENGTH, { context: { errorCode: ErrorCode.TooLongLocationName } })
+    @Length(
+        LOCATION_NAME_MIN_LENGTH, LOCATION_NAME_MAX_LENGTH, 
+        { context: { errorCode: ErrorCode.InvalidLocationNameLength } }
+    )
     @Prop({ required: true })
     name: string;
 
@@ -34,6 +42,7 @@ export class Location implements ILocation {
 
     @Expose()
     @IsPositive()
+    @IsInt( { context: { errorCode: ErrorCode.InvalidCapacity } })
     @Prop({ required: true })
     capacity: number;
 
@@ -51,22 +60,23 @@ export class Location implements ILocation {
     @IsString()
     @IsNotEmpty()
     @Prop()
-    weatherStation: string;
+    weatherStation?: string;
 
     @Expose()
     @IsOptional()
     @IsString()
     @IsNotEmpty()
     @Prop()
-    cctv: string;
+    cctv?: string;
 
     @Expose()
     @Prop({ required: true })
     owner: string;
 
     @Expose()
+    @Type(() => BriefUserInfo)
     @Prop({ required: true, min: 1 })
-    sharedWith: string[];
+    sharedWith: BriefUserInfo[];
 }
 
 export const LocationSchema = SchemaFactory.createForClass(Location);

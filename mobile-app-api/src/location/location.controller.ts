@@ -1,9 +1,9 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Req, UseFilters } from '@nestjs/common';
+import { Controller, Get, Param, Req, UseFilters } from '@nestjs/common';
 import { Request } from 'express';
 import { AxiosErrorFilter } from '../shared/filter';
-import { User } from '../user/schema';
+import { JwtPayload } from '../auth/type';
 import { LocationService } from './location.service';
-import { AddLocationReq, LocationDto, ValidateSerialNumberRes } from './dto';
+import { ValidateSerialNumberRes } from './dto';
 
 @Controller('location')
 export class LocationController {
@@ -12,25 +12,13 @@ export class LocationController {
     @Get('/validate/st-serial-number/:serialNumber')
     @UseFilters(new AxiosErrorFilter())
     async validateSTSerialNumber(@Req() request: Request, @Param('serialNumber') serialNumber: string): Promise<ValidateSerialNumberRes> {
-        const user = request.user as User;
-        return await this.service.validateSTSerialNumber(user.uuid, serialNumber);
+        const payload = request.user as JwtPayload;
+        return await this.service.validateSTSerialNumber(payload.sub, serialNumber);
     }
 
     @Get('/validate/ws-serial-number/:serialNumber')
     @UseFilters(new AxiosErrorFilter())
     async validateWSSerialNumber(@Param('serialNumber') serialNumber: string): Promise<ValidateSerialNumberRes> {
         return await this.service.validateWSSerialNumber(serialNumber);
-    }
-
-    @Post()
-    async addNew(@Req() request: Request, @Body() locationData: AddLocationReq): Promise<LocationDto> {
-        const user = request.user as User;
-        return await this.service.addNew(user.uuid, locationData);
-    }
-
-    @Post('/:locationUuid')
-    async addExisting(@Req() request: Request, @Param('locationUuid') locationUuid: string): Promise<LocationDto> {
-        const user = request.user as User;
-        return await this.service.addExisting(user.uuid, locationUuid);
     }
 }

@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { HttpModule } from '@nestjs/axios';
-import { UserModule } from '../user/user.module';
 import { HwApi } from '../shared/api';
 import { Location, LocationSchema } from './schema';
 import { LocationRepository } from './repository';
@@ -13,7 +12,6 @@ import { LocationController } from './location.controller';
         MongooseModule.forFeature([
             { name: Location.name, schema: LocationSchema },
         ]),
-        UserModule,
         HttpModule
     ],
     controllers: [LocationController],

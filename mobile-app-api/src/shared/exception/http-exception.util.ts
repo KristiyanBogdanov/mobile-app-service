@@ -1,7 +1,7 @@
-import { ErrorCode } from './error-codes';
+import { ErrorCode, ErrorCodeMessages } from './error-codes';
 
 export type HttpExceptionRecord = {
-    name: string
+    type: string
     code: ErrorCode;
     message: string;
 };
@@ -11,13 +11,13 @@ export type HttpExceptionBody = {
 };
 
 export function createHttpExceptionRecord(code: ErrorCode, message: string): HttpExceptionRecord {
-    return { name: 'HttpException', code, message };
+    return { type: 'HttpException', code, message };
 }
 
-export function createHttpExceptionBody(code: ErrorCode, message: string): HttpExceptionBody {
-    return { error: createHttpExceptionRecord(code, message) };
+export function createHttpExceptionBody(code: ErrorCode): HttpExceptionBody {
+    return { error: createHttpExceptionRecord(code, ErrorCodeMessages[code]) };
 }
 
-export function createHttpExceptionBodyList(errors: HttpExceptionRecord[]): HttpExceptionBody {
-    return { error: errors };
+export function createHttpExceptionBodyList(records: HttpExceptionRecord[]): HttpExceptionBody {
+    return { error: records };
 }
