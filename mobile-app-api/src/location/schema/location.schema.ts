@@ -42,14 +42,16 @@ export class Location implements ILocation {
 
     @Expose()
     @IsPositive()
-    @IsInt( { context: { errorCode: ErrorCode.InvalidCapacity } })
+    @IsInt()
     @Prop({ required: true })
     capacity: number;
 
     // TODO: test this with array of numbers
     @Expose()
     @IsArray()
-    @ArrayMinSize(1)
+    @ArrayMinSize(
+        1, { context: { errorCode: ErrorCode.SolarTrackersArrayMustContainAtLeastOneSerialNumber } }
+    )
     @IsString({ each: true })
     @IsNotEmpty({ each: true })
     @Prop({ required: true, min: 1 })

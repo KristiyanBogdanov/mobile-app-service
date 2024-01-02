@@ -7,9 +7,9 @@ export enum ErrorCode {
     InvalidEmailFormat,
     WeakPassword,
     InvalidLocationNameLength,
-    InvalidCapacity,
     InvalidSTSerialNumber,
     InvalidWSSerialNumber,
+    SolarTrackersArrayMustContainAtLeastOneSerialNumber,
     InvalidLocationUuid,
     // Unauthorized:
     InvalidEmail = 4011,
@@ -32,9 +32,9 @@ export const ErrorCodeMessages: Record<ErrorCode, string> = {
     [ErrorCode.InvalidEmailFormat]: 'Invalid email format',
     [ErrorCode.WeakPassword]: 'Weak password',
     [ErrorCode.InvalidLocationNameLength]: `Location name length must be between ${LOCATION_NAME_MIN_LENGTH} and ${LOCATION_NAME_MAX_LENGTH} characters`,
-    [ErrorCode.InvalidCapacity]: 'Capacity must be a positive integer',
     [ErrorCode.InvalidSTSerialNumber]: 'Invalid ST serial number',
     [ErrorCode.InvalidWSSerialNumber]: 'Invalid WS serial number',
+    [ErrorCode.SolarTrackersArrayMustContainAtLeastOneSerialNumber]: 'Solar trackers array must contain at least one serial number',
     [ErrorCode.InvalidLocationUuid]: 'Invalid location uuid',
     // Unauthorized:
     [ErrorCode.InvalidEmail]: 'Invalid email',
