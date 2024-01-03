@@ -3,7 +3,7 @@ import { Request } from 'express';
 import { AxiosErrorFilter } from '../shared/filter';
 import { JwtPayload } from '../auth/type';
 import { LocationService } from './location.service';
-import { ValidateSerialNumberRes } from './dto';
+import { GetLocationInsightsRes, ValidateSerialNumberRes } from './dto';
 
 @Controller('location')
 export class LocationController {
@@ -20,5 +20,11 @@ export class LocationController {
     @UseFilters(new AxiosErrorFilter())
     async validateWSSerialNumber(@Param('serialNumber') serialNumber: string): Promise<ValidateSerialNumberRes> {
         return await this.service.validateWSSerialNumber(serialNumber);
+    }
+
+    @Get('/:locationUuid/insights')
+    @UseFilters(new AxiosErrorFilter())
+    async getInsights(@Param('locationUuid') locationUuid: string): Promise<GetLocationInsightsRes> {
+        return await this.service.getInsights(locationUuid);
     }
 }
