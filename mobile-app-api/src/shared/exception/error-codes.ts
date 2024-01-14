@@ -21,6 +21,7 @@ export enum ErrorCode {
     LocationAlreadyAdded,
     // Not Found:
     UserNotFound = 4041,
+    LocationNotFound,
     // Internal Server Error:
     FailedToAddLocation = 5001,
 }
@@ -46,6 +47,7 @@ export const ErrorCodeMessages: Record<ErrorCode, string> = {
     [ErrorCode.LocationAlreadyAdded]: 'Location is already added',
     // Not Found:
     [ErrorCode.UserNotFound]: 'User not found',
+    [ErrorCode.LocationNotFound]: 'Location not found',
     // Internal Server Error:
     [ErrorCode.FailedToAddLocation]: 'Failed to add location to user',
 };

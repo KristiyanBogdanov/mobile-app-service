@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { v4 as uuidv4 } from 'uuid';
 import { lastValueFrom } from 'rxjs';
@@ -9,7 +9,11 @@ import { ErrorCode } from '../shared/exception';
 import { BriefUserInfo } from '../user/schema';
 import { LocationRepository } from './repository';
 import { Location } from './schema';
-import { AddLocationReq, LocationDto, ValidateSerialNumberHwApiRes, ValidateSerialNumberRes } from './dto';
+import {
+    AddLocationReq, LocationDto,
+    ValidateSerialNumberHwApiRes, ValidateSerialNumberRes,
+    GetLocationInsightsRes, SolarTrackersInsightsHwApiRes, WeatherStationInsightsHwApiRes
+} from './dto';
 
 @Injectable()
 export class LocationService {
@@ -54,6 +58,7 @@ export class LocationService {
         return locationDto;
     }
 
+    // TODO: try to optimize this method
     async addNew(briefUser: BriefUserInfo, locationData: AddLocationReq, session: ClientSession): Promise<Location> {
         for (const serialNumber of locationData.solarTrackers) {
             const result = await this.validateSTSerialNumber(briefUser.uuid, serialNumber, session);
@@ -102,5 +107,37 @@ export class LocationService {
         }
 
         return location;
+    }
+
+    async getInsights(locationUuid: string): Promise<GetLocationInsightsRes> {
+        const location = await this.locationRepository.findOne({ uuid: locationUuid });
+
+        if (!location) {
+            throw new NotFoundException(ErrorCode.LocationNotFound);
+        }
+
+        const [stInsights, wsInsights] = await Promise.all([
+            lastValueFrom(
+                this.httpService.post<SolarTrackersInsightsHwApiRes>(
+                    this.hwApi.getSTInsights(),
+                    { serialNumbers: location.solarTrackers }
+                )
+            ).then((response) => response.data),
+            location.weatherStation
+                ? lastValueFrom(
+                      this.httpService.get<WeatherStationInsightsHwApiRes>(
+                          this.hwApi.getWSInsights(location.weatherStation)
+                      )
+                  ).then((response) => response.data)
+                : undefined,
+        ]);
+
+        // TODO: calculate the centroid of all solar trackers coordinates
+
+        return {
+            coordinates: null, // TODO: change this to the centroid
+            solarTrackers: stInsights.data,
+            weatherStation: wsInsights
+        };
     }
 }

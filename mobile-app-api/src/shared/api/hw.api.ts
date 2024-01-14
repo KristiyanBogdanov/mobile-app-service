@@ -22,4 +22,12 @@ export class HwApi {
     validateWSSerialNumber(serialNumber: string): string {
         return this.createApiEndpoint(`${this.weatherStation}/validate/${serialNumber}`);
     }
+
+    getSTInsights(): string {
+        return this.createApiEndpoint(`${this.solarTracker}/insights`);
+    }
+
+    getWSInsights(serialNumber: string): string {
+        return this.createApiEndpoint(`${this.weatherStation}/${serialNumber}/insights`);
+    }
 }
