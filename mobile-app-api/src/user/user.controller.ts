@@ -1,7 +1,9 @@
 import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
 import { Request } from 'express';
+import { AuthNotRequired } from '../shared/decorator';
 import { JwtPayload } from '../auth/type';
 import { AddLocationReq, LocationDto } from '../location/dto';
+import { SendHwNotificationReq } from '../hw-notification/dto';
 import { UserService } from './user.service';
 import { UserDto } from './dto';
 
@@ -25,5 +27,11 @@ export class UserController {
     async addExistingLocation(@Req() request: Request, @Param('locationUuid') locationUuid: string): Promise<LocationDto> {
         const payload = request.user as JwtPayload;
         return await this.service.addExistingLocation(payload.sub, locationUuid);
+    }
+
+    @AuthNotRequired()
+    @Post('/send-hw-notification')
+    async sendHwNotification(@Body() notificationData: SendHwNotificationReq): Promise<void> {
+        return await this.service.sendHwNotification(notificationData);
     }
 }

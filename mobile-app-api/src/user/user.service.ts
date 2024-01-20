@@ -3,7 +3,9 @@ import { ClientSession } from 'mongoose';
 import { plainToClass } from 'class-transformer';
 import { ErrorCode } from '../shared/exception';
 import { AddLocationReq, LocationDto } from '../location/dto';
+import { SendHwNotificationReq } from '../hw-notification/dto';
 import { LocationService } from '../location/location.service';
+import { HwNotificationService } from '../hw-notification/hw-notification.service';
 import { UserRepository } from './repository';
 import { BriefUserInfo, User } from './schema';
 import { UserDto } from './dto';
@@ -11,22 +13,27 @@ import { UserDto } from './dto';
 @Injectable()
 export class UserService {
     constructor(
-        private readonly userRepository: UserRepository,
-        private readonly locationService: LocationService   
+        private readonly repository: UserRepository,
+        private readonly locationService: LocationService,
+        private readonly hwNotificationService: HwNotificationService
     ) { }
 
     async create(user: User): Promise<User> {
-        const emailIsAlreadyUsed = await this.userRepository.findOne({ email: user.email });
+        const emailIsAlreadyUsed = await this.repository.findOne({ email: user.email });
 
         if (emailIsAlreadyUsed) {
             throw new ConflictException(ErrorCode.EmailIsAlreadyUsed);
         }
 
-        return await this.userRepository.create(user);
+        return await this.repository.create(user);
     }
 
     async findByEmail(email: string): Promise<User> {
-        return await this.userRepository.findOne({ email });
+        return await this.repository.findOne({ email });
+    }
+
+    async updateFcmTokens(userUuid: string, fcmToken: string): Promise<number> {
+        return await this.repository.updateFcmTokens(userUuid, fcmToken);
     }
 
     mapToUserDto(user: User): UserDto {
@@ -34,12 +41,14 @@ export class UserService {
         userDto.locations = user.locations.map(
             (location) => this.locationService.mapToLocationDto(user.uuid, location)
         );
+        userDto.hwNotifications = user.hwNotifications.map(this.hwNotificationService.mapToHwNotificationDto);
 
         return userDto;
-    }  
+    }
 
+    // TODO: check the usage of this method
     async fetchData(userUuid: string): Promise<UserDto> {
-        const user = await this.userRepository.findOne({ uuid: userUuid });
+        const user = await this.repository.findOne({ uuid: userUuid });
 
         if (!user) {
             throw new NotFoundException(ErrorCode.UserNotFound);
@@ -49,7 +58,7 @@ export class UserService {
     }
 
     private async getBriefUserInfo(userUuid: string, session?: ClientSession): Promise<BriefUserInfo> {
-        const user = await this.userRepository.findOne({ uuid: userUuid }, {}, { session });
+        const user = await this.repository.findOne({ uuid: userUuid }, {}, { session });
 
         if (!user) {
             throw new NotFoundException(ErrorCode.UserNotFound);
@@ -59,7 +68,7 @@ export class UserService {
     }
 
     private async addLocationToUser(userUuid: string, locationOid: string, session: ClientSession) {
-        const result = await this.userRepository.addLocation(userUuid, locationOid, session);
+        const result = await this.repository.addLocation(userUuid, locationOid, session);
 
         if (result === 0) {
             throw new InternalServerErrorException(ErrorCode.FailedToAddLocation);
@@ -67,7 +76,7 @@ export class UserService {
     }
 
     async addNewLocation(userUuid: string, locationData: AddLocationReq): Promise<LocationDto> {
-        const session = await this.userRepository.startSession();
+        const session = await this.repository.startSession();
         session.startTransaction();
 
         try {
@@ -77,18 +86,18 @@ export class UserService {
             await this.addLocationToUser(userUuid, newLocation._id, session);
 
             await session.commitTransaction();
-            session.endSession();
 
             return this.locationService.mapToLocationDto(userUuid, newLocation);
         } catch (error) {
             await session.abortTransaction();
-            session.endSession();
             throw error;
+        } finally {
+            session.endSession();
         }
     }
 
     async addExistingLocation(userUuid: string, locationUuid: string): Promise<LocationDto> {
-        const session = await this.userRepository.startSession();
+        const session = await this.repository.startSession();
         session.startTransaction();
 
         try {
@@ -98,13 +107,43 @@ export class UserService {
             await this.addLocationToUser(userUuid, location._id, session);
 
             await session.commitTransaction();
-            session.endSession();
 
             return this.locationService.mapToLocationDto(userUuid, location);
         } catch (error) {
             await session.abortTransaction();
-            session.endSession();
             throw error;
+        } finally {
+            session.endSession();
+        }
+    }
+
+    async sendHwNotification(notificationData: SendHwNotificationReq): Promise<void> {
+        const session = await this.repository.startSession();
+        session.startTransaction();
+
+        try {
+            const users = await this.repository.findUsersWithDevice(notificationData.serialNumber, session);
+            
+            if (users.length !== 0) {
+                const hwNotification = await this.hwNotificationService.create(notificationData, session);
+
+                const results = await Promise.all(
+                    users.map(async (user) => {
+                        return await this.repository.addHwNotification(user.uuid, hwNotification._id, session);
+                    })
+                );
+
+                if (results.some((result) => result === 0)) {
+                    throw new InternalServerErrorException(ErrorCode.FailedToSendHwNotification);
+                }
+            }
+
+            await session.commitTransaction();
+        } catch (error) {
+            await session.abortTransaction();
+            throw error;
+        } finally {
+            session.endSession();
         }
     }
 }

@@ -9,6 +9,10 @@ export class SignInReq {
     @IsString()
     @IsNotEmpty()
     password: string;
+
+    @IsString()
+    @IsNotEmpty()
+    fcmToken: string;
 }
 
 @Exclude()

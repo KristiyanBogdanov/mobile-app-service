@@ -33,6 +33,7 @@ export class AuthService {
         const user = new User(sigupData);
         user.uuid = uuidv4();
         user.password = await this.hashPassword(user.password);
+        user.fcmTokens = [sigupData.fcmToken];
 
         const createdUser = await this.userService.create(user);
         const userDto = this.userService.mapToUserDto(createdUser);
@@ -56,6 +57,7 @@ export class AuthService {
             throw new UnauthorizedException(ErrorCode.InvalidPassword);
         }
 
+        this.userService.updateFcmTokens(user.uuid, signinData.fcmToken);
         const userDto = this.userService.mapToUserDto(user);
         
         return new SignInRes({

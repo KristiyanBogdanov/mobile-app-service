@@ -56,3 +56,4 @@ export class GetLocationInsightsRes {
 
 
 // TODO: remove location from locationDto
+// TODO: add validation

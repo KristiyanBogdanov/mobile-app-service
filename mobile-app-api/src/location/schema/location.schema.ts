@@ -81,4 +81,6 @@ export class Location implements ILocation {
     sharedWith: BriefUserInfo[];
 }
 
+// TODO: try to add constructor with Partial<Location> as parameter, and remove plainToClass from location.service.ts
+
 export const LocationSchema = SchemaFactory.createForClass(Location);
