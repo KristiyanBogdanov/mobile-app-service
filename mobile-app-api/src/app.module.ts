@@ -5,6 +5,7 @@ import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { AccessTokenGuard } from './shared/guard';
 import { LocationModule } from './location/location.module';
+import { FirebaseModule } from './firebase/firebase.module';
 
 @Module({
     imports: [
@@ -12,7 +13,8 @@ import { LocationModule } from './location/location.module';
         DatabaseModule,
         AuthModule,
         UserModule,
-        LocationModule
+        LocationModule,
+        FirebaseModule
     ],
     providers: [
         {

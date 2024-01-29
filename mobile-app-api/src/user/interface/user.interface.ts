@@ -1,11 +1,14 @@
 import { ILocation } from '../../location/interface';
+import { IHwNotification } from '../interface';
 
 export interface IUser {
-    uuid: string;
+    id: string;
+    fcmTokens: string[];
     username: string;
     email: string;
     password: string;
     locations: ILocation[];
+    hwNotifications: IHwNotification[];
 
     // TODO: Add this later
     // country: string;

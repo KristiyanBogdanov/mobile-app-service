@@ -22,9 +22,10 @@ export class LocationController {
         return await this.service.validateWSSerialNumber(serialNumber);
     }
 
-    @Get('/:locationUuid/insights')
+    @Get('/:locationId/insights')
     @UseFilters(new AxiosErrorFilter())
-    async getInsights(@Param('locationUuid') locationUuid: string): Promise<GetLocationInsightsRes> {
-        return await this.service.getInsights(locationUuid);
+    async getInsights(@Param('locationId') locationId: string): Promise<GetLocationInsightsRes> {
+        
+        return await this.service.getInsights(locationId);
     }
 }

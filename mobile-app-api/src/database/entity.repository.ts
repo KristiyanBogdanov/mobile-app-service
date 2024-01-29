@@ -1,4 +1,4 @@
-import { ClientSession, Document, FilterQuery, Model, UpdateQuery } from 'mongoose';
+import { ClientSession, Document, FilterQuery, Model, PipelineStage, UpdateQuery } from 'mongoose';
 
 export abstract class EntityRepository<T> {
     constructor(protected readonly entityModel: Model<T>) { }
@@ -47,5 +47,11 @@ export abstract class EntityRepository<T> {
     async createInSession(entity: T, session: ClientSession): Promise<T & Document> {
         return await this.entityModel.create([entity], { session })
             .then((result) => result[0]);
+    }
+
+    async aggregate(pipeline: PipelineStage[], options?: Record<string, unknown>): Promise<any[]> {
+        return await this.entityModel.aggregate(pipeline, options).then((docs) => {
+            return docs.map(doc => this.entityModel.hydrate(doc));
+        });
     }
 }

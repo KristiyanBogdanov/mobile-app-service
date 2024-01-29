@@ -7,6 +7,6 @@ import { IBriefUserInfo } from '../interface';
 @Exclude()
 @Schema({ _id: false })
 export class BriefUserInfo extends PickType(User, [
-    'uuid',
+    'id',
     'username',
 ]) implements IBriefUserInfo { }

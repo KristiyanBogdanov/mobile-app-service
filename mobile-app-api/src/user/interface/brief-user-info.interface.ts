@@ -1,4 +1,4 @@
 export interface IBriefUserInfo {
-    uuid: string;
+    id: string;
     username: string;
 }

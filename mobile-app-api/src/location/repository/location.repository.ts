@@ -11,13 +11,9 @@ export class LocationRepository extends EntityRepository<Location> {
         super(model);
     }
 
-    async findAllWithUuidIn(uuids: string[]): Promise<Location[]> {
-        return await this.find({ uuid: { $in: uuids } });
-    }
-
-    async shareWith(briefUser: BriefUserInfo, locationUuid: string, session: ClientSession): Promise<number> {
+    async shareWith(briefUser: BriefUserInfo, locationId: string, session: ClientSession): Promise<number> {
         return await this.updateOne(
-            { uuid: locationUuid },
+            { _id: locationId },
             { $addToSet: { sharedWith: briefUser } },
             { session }
         );

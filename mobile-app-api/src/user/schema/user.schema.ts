@@ -1,30 +1,24 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Schema as MongooseSchema } from 'mongoose';
 import { IsEmail, IsStrongPassword, Length } from 'class-validator';
-import { Exclude, Expose, Transform } from 'class-transformer';
+import { Exclude, Expose, Type } from 'class-transformer';
 import { STRONG_PASSWORD_OPTIONS, USERNAME_MAX_LENGTH, USERNAME_MIN_LENGTH } from '../../shared/constants';
 import { ErrorCode } from '../../shared/exception';
 import { Location } from '../../location/schema';
 import { IUser } from '../interface';
+import { HwNotification } from './hw-notification.schema';
 
 @Exclude()
 @Schema({
     collection: 'users',
-    versionKey: false,
+    versionKey: false
 })
 export class User implements IUser {
-    @Transform(({ value }) => value.toString())
-    _id: string;
-
     @Expose()
-    @Prop({
-        index: {
-            name: 'uuidIndex',
-            unique: true
-        },
-        required: true,
-    })
-    uuid: string;
+    id: string;
+
+    @Prop({ required: true })
+    fcmTokens: string[];
 
     @Expose()
     @Length(
@@ -61,6 +55,14 @@ export class User implements IUser {
         default: [], // TODO: check if this is needed
     })
     locations: Location[];
+
+    @Expose()
+    @Type(() => HwNotification)
+    @Prop({
+        type: [HwNotification],
+        default: [],
+    })
+    hwNotifications: HwNotification[];
 
     constructor(user: Partial<User>) {
         Object.assign(this, user);
