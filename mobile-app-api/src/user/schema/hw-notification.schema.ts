@@ -1,17 +1,16 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Exclude, Expose, Transform } from 'class-transformer';
-import { IsDateString, IsNotEmpty, IsString } from 'class-validator';
+import { Prop, Schema } from '@nestjs/mongoose';
+import { Exclude, Expose } from 'class-transformer';
+import { IsDateString, IsEnum, IsNotEmpty, IsString } from 'class-validator';
 import { IHwNotification } from '../interface';
 import { NotificationStatus } from '../enum';
 
 @Exclude()
 @Schema({
-    collection: 'hw-notifications',
     versionKey: false,
 })
 export class HwNotification implements IHwNotification {
-    @Transform(({ value }) => value.toString())
-    _id: string;
+    @Expose()
+    id: string;
 
     @Expose()
     @IsString()
@@ -49,6 +48,7 @@ export class HwNotification implements IHwNotification {
     timestamp: Date;
 
     @Expose()
+    @IsEnum(NotificationStatus)
     @Prop({
         type: String,
         enum: NotificationStatus,
@@ -61,5 +61,3 @@ export class HwNotification implements IHwNotification {
         this.status = NotificationStatus.Active;
     }
 }
-
-export const HwNotificationSchema = SchemaFactory.createForClass(HwNotification);

@@ -1,6 +1,7 @@
 import { IBriefUserInfo } from '../../user/interface';
 
 export interface ILocation {
+    id: string;
     uuid: string;
     name: string;
     location: string; // TODO: refactor to be a lat/long object

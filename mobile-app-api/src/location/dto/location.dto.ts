@@ -4,6 +4,7 @@ import { Location } from '../schema';
 
 @Exclude()
 export class LocationDto extends PickType(Location, [
+    'id',
     'uuid',
     'name',
     'location',

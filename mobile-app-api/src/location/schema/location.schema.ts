@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Exclude, Expose, Transform, Type } from 'class-transformer';
+import { Exclude, Expose, Type } from 'class-transformer';
 import { ArrayMinSize, IsArray, IsInt, IsNotEmpty, IsOptional, IsPositive, IsString, Length } from 'class-validator';
 import { ErrorCode } from '../../shared/exception';
 import { LOCATION_NAME_MAX_LENGTH, LOCATION_NAME_MIN_LENGTH } from '../../shared/constants';
@@ -9,11 +9,11 @@ import { ILocation } from '../interface';
 @Exclude()
 @Schema({
     collection: 'locations',
-    versionKey: false,
+    versionKey: false
 })
 export class Location implements ILocation {
-    @Transform(({ value }) => value.toString())
-    _id: string;
+    @Expose()
+    id: string;
 
     @Expose()
     @Prop({

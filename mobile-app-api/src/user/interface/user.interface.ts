@@ -1,8 +1,8 @@
-import { IHwNotification } from '../../hw-notification/interface';
 import { ILocation } from '../../location/interface';
+import { IHwNotification } from '../interface';
 
 export interface IUser {
-    uuid: string;
+    id: string;
     fcmTokens: string[];
     username: string;
     email: string;

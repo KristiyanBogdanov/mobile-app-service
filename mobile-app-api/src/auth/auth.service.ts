@@ -1,7 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcrypt';
 import { ErrorCode } from '../shared/exception';
 import { User } from '../user/schema';
@@ -31,7 +30,6 @@ export class AuthService {
 
     async signup(sigupData: SignUpReq): Promise<SignInRes> {
         const user = new User(sigupData);
-        user.uuid = uuidv4();
         user.password = await this.hashPassword(user.password);
         user.fcmTokens = [sigupData.fcmToken];
 
@@ -40,7 +38,7 @@ export class AuthService {
 
         return new SignInRes({
             ...userDto,
-            accessToken: await this.generateAccessToken({ sub: createdUser.uuid })
+            accessToken: await this.generateAccessToken({ sub: createdUser.id })
         });
     }
 
@@ -57,12 +55,12 @@ export class AuthService {
             throw new UnauthorizedException(ErrorCode.InvalidPassword);
         }
 
-        this.userService.updateFcmTokens(user.uuid, signinData.fcmToken);
+        this.userService.updateFcmTokens(user.id, signinData.fcmToken);
         const userDto = this.userService.mapToUserDto(user);
         
         return new SignInRes({
             ...userDto,
-            accessToken: await this.generateAccessToken({ sub: user.uuid })
+            accessToken: await this.generateAccessToken({ sub: user.id })
         });
     }
 }

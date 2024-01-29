@@ -4,8 +4,8 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class HwApi {
     private readonly baseUrl: string;
-    private readonly solarTracker = 'solar-tracker';
-    private readonly weatherStation = 'weather-station';
+    private readonly solarTracker = 'solar-trackers';
+    private readonly weatherStation = 'weather-stations';
 
     constructor(private readonly configService: ConfigService) {
         this.baseUrl = this.configService.get<string>('HW_API_URL');

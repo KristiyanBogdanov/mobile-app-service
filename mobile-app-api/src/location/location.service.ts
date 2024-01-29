@@ -23,7 +23,7 @@ export class LocationService {
         private readonly locationRepository: LocationRepository
     ) { }
 
-    async validateSTSerialNumber(userUuid: string, serialNumber: string, session?: ClientSession): Promise<ValidateSerialNumberRes> {
+    async validateSTSerialNumber(userId: string, serialNumber: string, session?: ClientSession): Promise<ValidateSerialNumberRes> {
         const isValid = await lastValueFrom(
             this.httpService.get<ValidateSerialNumberHwApiRes>(this.hwApi.validateSTSerialNumber(serialNumber))
         ).then((response) => response.data.isValid);
@@ -35,7 +35,7 @@ export class LocationService {
         const location = await this.locationRepository.findOne({ solarTrackers: serialNumber }, {}, { session });
 
         if (location) {
-            const isAdded = location.sharedWith.some((user) => user.uuid === userUuid);
+            const isAdded = location.sharedWith.some((user) => user.id === userId);
             return { isValid, isUsed: true, isAdded };
         }
 
@@ -50,10 +50,10 @@ export class LocationService {
         return { isValid };
     }
 
-    mapToLocationDto(userUuid: string, location: Location): LocationDto {
+    mapToLocationDto(userId: string, location: Location): LocationDto {
         const locationDto = plainToClass(LocationDto, location, { enableCircularCheck: true }); // TODO: try to remove enableCircularCheck
-        locationDto.sharedWith = locationDto.sharedWith.filter((user) => user.uuid !== userUuid);
-        locationDto.amIOwner = location.owner === userUuid;
+        locationDto.sharedWith = locationDto.sharedWith.filter((user) => user.id !== userId);
+        locationDto.amIOwner = location.owner === userId;
 
         return locationDto;
     }
@@ -61,7 +61,7 @@ export class LocationService {
     // TODO: try to optimize this method
     async addNew(briefUser: BriefUserInfo, locationData: AddLocationReq, session: ClientSession): Promise<Location> {
         for (const serialNumber of locationData.solarTrackers) {
-            const result = await this.validateSTSerialNumber(briefUser.uuid, serialNumber, session);
+            const result = await this.validateSTSerialNumber(briefUser.id, serialNumber, session);
 
             if (!result.isValid) {
                 throw new BadRequestException(ErrorCode.InvalidSTSerialNumber);
@@ -82,7 +82,7 @@ export class LocationService {
 
         const location = plainToClass(Location, locationData);
         location.uuid = uuidv4();
-        location.owner = briefUser.uuid;
+        location.owner = briefUser.id;
         location.sharedWith = [briefUser];
 
         return await this.locationRepository.createInSession(location, session);
@@ -96,11 +96,11 @@ export class LocationService {
             throw new BadRequestException(ErrorCode.InvalidLocationUuid);
         }
 
-        if (location.sharedWith.some((user) => user.uuid === briefUser.uuid)) {
+        if (location.sharedWith.some((user) => user.id === briefUser.id)) {
             throw new ConflictException(ErrorCode.LocationAlreadyAdded);
         }
 
-        const result = await this.locationRepository.shareWith(briefUser, locationUuid, session);
+        const result = await this.locationRepository.shareWith(briefUser, location.id, session);
 
         if (result === 0) {
             throw new InternalServerErrorException(ErrorCode.FailedToAddLocation);
@@ -109,8 +109,8 @@ export class LocationService {
         return location;
     }
 
-    async getInsights(locationUuid: string): Promise<GetLocationInsightsRes> {
-        const location = await this.locationRepository.findOne({ uuid: locationUuid });
+    async getInsights(locationId: string): Promise<GetLocationInsightsRes> {
+        const location = await this.locationRepository.findById(locationId);
 
         if (!location) {
             throw new NotFoundException(ErrorCode.LocationNotFound);

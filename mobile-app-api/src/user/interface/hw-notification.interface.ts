@@ -1,6 +1,7 @@
 import { NotificationStatus } from '../enum';
 
 export interface IHwNotification {
+    id: string;
     notificationType: string;
     serialNumber: string;
     deviceType: string;

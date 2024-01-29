@@ -50,6 +50,8 @@ export abstract class EntityRepository<T> {
     }
 
     async aggregate(pipeline: PipelineStage[], options?: Record<string, unknown>): Promise<any[]> {
-        return await this.entityModel.aggregate(pipeline, options);
+        return await this.entityModel.aggregate(pipeline, options).then((docs) => {
+            return docs.map(doc => this.entityModel.hydrate(doc));
+        });
     }
 }

@@ -1,9 +1,10 @@
 import { PickType } from '@nestjs/mapped-types';
-import { HwNotification } from '../schema';
 import { Exclude } from 'class-transformer';
+import { HwNotification } from '../schema';
 
 @Exclude()
 export class HwNotificationDto extends PickType(HwNotification, [
+    'id',
     'notificationType',
     'serialNumber',
     'deviceType',
@@ -11,6 +12,4 @@ export class HwNotificationDto extends PickType(HwNotification, [
     'message',
     'timestamp',
     'status'
-]) { 
-    id: string;
-}
+]) {}

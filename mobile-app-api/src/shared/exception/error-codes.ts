@@ -26,6 +26,8 @@ export enum ErrorCode {
     FailedToAddLocation = 5001,
     FailedToUpdateHwNotificationStatus,
     FailedToSendHwNotification,
+    FailedToUpdateHwNotification,
+    FailedToDeleteHwNotification,
 
 }
 
@@ -55,4 +57,6 @@ export const ErrorCodeMessages: Record<ErrorCode, string> = {
     [ErrorCode.FailedToAddLocation]: 'Failed to add location to user',
     [ErrorCode.FailedToUpdateHwNotificationStatus]: 'Failed to update hardware notification status',
     [ErrorCode.FailedToSendHwNotification]: 'Failed to send hardware notification',
+    [ErrorCode.FailedToUpdateHwNotification]: 'Failed to update hardware notification',
+    [ErrorCode.FailedToDeleteHwNotification]: 'Failed to delete hardware notification',
 };
