@@ -29,10 +29,19 @@ export class UserRepository extends EntityRepository<User> {
             .then((user) => user?.populate('locations hwNotifications'));
     }
 
-    async updateFcmTokens(userId: string, fcmToken: string): Promise<number> {
+    async updateRefreshToken(userId: string, refreshToken: string, session?: ClientSession): Promise<number> {
+        return await this.updateOne(
+            { _id: userId },
+            { $set: { refreshToken } },
+            { session }
+        );
+    }
+
+    async updateFcmTokens(userId: string, fcmToken: string, session?: ClientSession): Promise<number> {
         return await this.updateOne(
             { _id: userId }, 
-            { $addToSet: { fcmTokens: fcmToken } }
+            { $addToSet: { fcmTokens: fcmToken } },
+            { session }
         );
     }
 

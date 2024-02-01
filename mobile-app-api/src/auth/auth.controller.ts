@@ -1,11 +1,20 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, UseGuards } from '@nestjs/common';
+import { Request } from 'express';
 import { AuthNotRequired } from '../shared/decorator';
+import { RefreshTokenGuard } from '../shared/guard';
 import { AuthService } from './auth.service';
-import { SignInReq, SignInRes, SignUpReq } from './dto';
+import { GetAuthLimitsRes, RefreshTokensRes, SignInReq, SignInRes, SignUpReq } from './dto';
+import { JwtPayload, JwtRefresh } from './type';
 
 @Controller('auth')
 export class AuthController {
     constructor(private readonly authService: AuthService) { }
+
+    @AuthNotRequired()
+    @Get('/limits')
+    async getLimits(): Promise<GetAuthLimitsRes> {
+        return await this.authService.getLimits();
+    }
 
     @AuthNotRequired()
     @Post('/signup')
@@ -17,6 +26,20 @@ export class AuthController {
     @Post('/signin')
     @HttpCode(HttpStatus.OK)
     async signin(@Body() signinData: SignInReq): Promise<SignInRes> {
+        console.log('signinData', signinData);
         return await this.authService.signin(signinData);
+    }
+
+    @Get('/signout')
+    async signout(@Req() request: Request): Promise<void> {
+        const payload = request.user as JwtPayload;
+        return await this.authService.signout(payload.sub);
+    }
+
+    @UseGuards(RefreshTokenGuard)
+    @Get('/refresh')
+    async refreshTokens(@Req() request: Request): Promise<RefreshTokensRes> {
+        const payload = request.user as JwtRefresh
+        return await this.authService.refreshTokens(payload.jwtPayload.sub, payload.refreshToken);
     }
 }

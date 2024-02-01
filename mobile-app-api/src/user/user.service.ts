@@ -17,22 +17,18 @@ export class UserService {
         private readonly firebaseService: FirebaseService
     ) { }
 
-    async create(user: User): Promise<User> {
+    async create(user: User, session?: ClientSession): Promise<User> {
         const emailIsAlreadyUsed = await this.repository.findOne({ email: user.email });
 
         if (emailIsAlreadyUsed) {
-            throw new ConflictException(ErrorCode.EmailIsAlreadyUsed);
+            throw new ConflictException();
         }
 
-        return await this.repository.create(user);
-    }
-
-    async findByEmail(email: string): Promise<User> {
-        return await this.repository.findOne({ email });
-    }
-
-    async updateFcmTokens(userId: string, fcmToken: string): Promise<number> {
-        return await this.repository.updateFcmTokens(userId, fcmToken);
+        if (session) {
+            return await this.repository.createInSession(user, session);
+        } else {
+            return await this.repository.create(user);
+        }
     }
 
     private mapToHwNotificationDto(hwNotification: HwNotification): HwNotificationDto {
@@ -56,7 +52,7 @@ export class UserService {
         const user = await this.repository.findById(userId);
 
         if (!user) {
-            throw new NotFoundException(ErrorCode.UserNotFound);
+            throw new NotFoundException();
         }
 
         return this.mapToUserDto(user);
