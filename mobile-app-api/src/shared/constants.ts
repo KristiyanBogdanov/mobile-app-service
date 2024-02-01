@@ -10,5 +10,6 @@ export const STRONG_PASSWORD_OPTIONS: IsStrongPasswordOptions = {
     minNumbers: 1,
     minLowercase: 1,
     minUppercase: 1,
-    minSymbols: 0,
+    minSymbols: 0
 };
+export const PASSWORD_MAX_LENGTH = 128;

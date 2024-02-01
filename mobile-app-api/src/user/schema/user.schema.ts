@@ -64,6 +64,10 @@ export class User implements IUser {
     })
     hwNotifications: HwNotification[];
 
+    @Expose()
+    @Prop()
+    refreshToken: string;
+
     constructor(user: Partial<User>) {
         Object.assign(this, user);
     }

@@ -25,3 +25,4 @@ async function bootstrap() {
 bootstrap();
 
 // TODO: rename endpoints using plurals
+// TODO: error handling

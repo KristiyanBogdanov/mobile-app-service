@@ -9,6 +9,7 @@ export interface IUser {
     password: string;
     locations: ILocation[];
     hwNotifications: IHwNotification[];
+    refreshToken: string;
 
     // TODO: Add this later
     // country: string;
