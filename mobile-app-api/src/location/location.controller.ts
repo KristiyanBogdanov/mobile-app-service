@@ -3,12 +3,17 @@ import { Request } from 'express';
 import { AxiosErrorFilter } from '../shared/filter';
 import { JwtPayload } from '../auth/type';
 import { LocationService } from './location.service';
-import { GetLocationInsightsRes, ValidateSerialNumberRes } from './dto';
+import { GetLocationInsightsRes, GetLocationLimitsRes, ValidateSerialNumberRes } from './dto';
 
 @Controller('location')
 export class LocationController {
     constructor(private readonly service: LocationService) { }
 
+    @Get('/limits')
+    getLimits(): GetLocationLimitsRes {
+        return this.service.getLimits();
+    }
+    
     @Get('/validate/st-serial-number/:serialNumber')
     @UseFilters(new AxiosErrorFilter())
     async validateSTSerialNumber(@Req() request: Request, @Param('serialNumber') serialNumber: string): Promise<ValidateSerialNumberRes> {
@@ -25,7 +30,6 @@ export class LocationController {
     @Get('/:locationId/insights')
     @UseFilters(new AxiosErrorFilter())
     async getInsights(@Param('locationId') locationId: string): Promise<GetLocationInsightsRes> {
-        
         return await this.service.getInsights(locationId);
     }
 }

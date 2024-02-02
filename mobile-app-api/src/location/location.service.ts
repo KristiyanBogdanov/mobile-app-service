@@ -6,13 +6,15 @@ import { ClientSession } from 'mongoose';
 import { plainToClass } from 'class-transformer';
 import { HwApi } from '../shared/api';
 import { ErrorCode } from '../shared/exception';
+import { LOCATION_NAME_MAX_LENGTH, LOCATION_NAME_MIN_LENGTH } from '../shared/constants';
 import { BriefUserInfo } from '../user/schema';
 import { LocationRepository } from './repository';
 import { Location } from './schema';
 import {
     AddLocationReq, LocationDto,
     ValidateSerialNumberHwApiRes, ValidateSerialNumberRes,
-    GetLocationInsightsRes, SolarTrackersInsightsHwApiRes, WeatherStationInsightsHwApiRes
+    GetLocationInsightsRes, SolarTrackersInsightsHwApiRes, WeatherStationInsightsHwApiRes,
+    GetLocationLimitsRes
 } from './dto';
 
 @Injectable()
@@ -22,6 +24,13 @@ export class LocationService {
         private readonly httpService: HttpService,
         private readonly locationRepository: LocationRepository
     ) { }
+
+    getLimits(): GetLocationLimitsRes {
+        return {
+            nameMinLength: LOCATION_NAME_MIN_LENGTH,
+            nameMaxLength: LOCATION_NAME_MAX_LENGTH,
+        };
+    }
 
     async validateSTSerialNumber(userId: string, serialNumber: string, session?: ClientSession): Promise<ValidateSerialNumberRes> {
         const isValid = await lastValueFrom(

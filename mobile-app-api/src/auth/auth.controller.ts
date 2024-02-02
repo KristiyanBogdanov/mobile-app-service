@@ -12,8 +12,8 @@ export class AuthController {
 
     @AuthNotRequired()
     @Get('/limits')
-    async getLimits(): Promise<GetAuthLimitsRes> {
-        return await this.authService.getLimits();
+    getLimits(): GetAuthLimitsRes {
+        return this.authService.getLimits();
     }
 
     @AuthNotRequired()

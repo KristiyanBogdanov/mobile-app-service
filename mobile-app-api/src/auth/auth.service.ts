@@ -19,7 +19,7 @@ export class AuthService {
         private readonly jwtService: JwtService,
     ) { }
 
-    async getLimits(): Promise<GetAuthLimitsRes> {
+    getLimits(): GetAuthLimitsRes {
         return {
             usernameMinLength: USERNAME_MIN_LENGTH,
             usernameMaxLength: USERNAME_MAX_LENGTH,
