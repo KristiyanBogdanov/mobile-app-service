@@ -118,6 +118,29 @@ export class UserService {
         }
     }
 
+    async removeLocation(userId: string, locationId: string): Promise<void> {
+        const session = await this.repository.startSession();
+        session.startTransaction();
+
+        try {
+            const [_, result] = await Promise.all([
+                this.locationService.remove(userId, locationId, session),
+                this.repository.removeLocation(userId, locationId, session)
+            ]);
+
+            if (result === 0) {
+                throw new InternalServerErrorException();
+            }
+
+            await session.commitTransaction();
+        } catch (error) {
+            await session.abortTransaction();
+            throw error;
+        } finally {
+            session.endSession();
+        }
+    }
+
     // private findExpiredHwNotifications(users: User[]): String[] {
     //     const expiredNotifications = users.map((user) => {
     //         return user.hwNotifications

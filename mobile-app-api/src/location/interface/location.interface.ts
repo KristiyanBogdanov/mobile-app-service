@@ -4,7 +4,6 @@ export interface ILocation {
     id: string;
     uuid: string;
     name: string;
-    location: string; // TODO: refactor to be a lat/long object
     capacity: number;
     solarTrackers: string[];
     weatherStation?: string;

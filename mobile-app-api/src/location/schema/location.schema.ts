@@ -35,12 +35,6 @@ export class Location implements ILocation {
     name: string;
 
     @Expose()
-    @IsString()
-    @IsNotEmpty()
-    @Prop({ required: true })
-    location: string;
-
-    @Expose()
     @IsPositive()
     @IsInt()
     @Prop({ required: true })

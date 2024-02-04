@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { v4 as uuidv4 } from 'uuid';
 import { lastValueFrom } from 'rxjs';
@@ -14,7 +14,8 @@ import {
     AddLocationReq, LocationDto,
     ValidateSerialNumberHwApiRes, ValidateSerialNumberRes,
     GetLocationInsightsRes, SolarTrackersInsightsHwApiRes, WeatherStationInsightsHwApiRes,
-    GetLocationLimitsRes
+    GetLocationLimitsRes,
+    WeatherStationInsightsDto
 } from './dto';
 
 @Injectable()
@@ -148,5 +149,65 @@ export class LocationService {
             solarTrackers: stInsights.data,
             weatherStation: wsInsights
         };
+    }
+
+    async getWeatherStationInsights(wsSerialNumber: string): Promise<WeatherStationInsightsDto> {
+        return lastValueFrom(
+            this.httpService.get<WeatherStationInsightsHwApiRes>(this.hwApi.getWSInsights(wsSerialNumber))
+        ).then((response) => response.data);
+    }
+
+    async addWeatherStation(userId: string, locationId: string, wsSerialNumber: string): Promise<void> {
+        const location = await this.locationRepository.findById(locationId);
+
+        if (!location) {
+            throw new NotFoundException();
+        }
+
+        if (location.owner !== userId) {
+            throw new ForbiddenException();
+        }
+
+        const result = await this.validateWSSerialNumber(wsSerialNumber);
+
+        if (!result.isValid) {
+            throw new BadRequestException();
+        }
+
+        location.weatherStation = wsSerialNumber;
+        await location.save();
+    }
+
+    async removeWeatherStation(userId: string, locationId: string): Promise<void> {
+        const location = await this.locationRepository.findById(locationId);
+
+        if (!location) {
+            throw new NotFoundException();
+        }
+
+        if (location.owner !== userId) {
+            throw new ForbiddenException();
+        }
+
+        location.weatherStation = null;
+        await location.save();
+    }
+
+    async remove(userId: string, locationId: string, session: ClientSession): Promise<void> {
+        const location = await this.locationRepository.findById(locationId);
+
+        if (!location) {
+            throw new NotFoundException();
+        }
+
+        if (location.owner !== userId) {
+            throw new ForbiddenException();
+        }
+
+        const result = await this.locationRepository.deleteById(locationId, { session });
+
+        if (result === 0) {
+            throw new InternalServerErrorException();
+        }
     }
 }

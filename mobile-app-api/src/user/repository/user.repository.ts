@@ -53,6 +53,14 @@ export class UserRepository extends EntityRepository<User> {
         );
     }
 
+    async removeLocation(userId: string, locationId: string, session: ClientSession): Promise<number> {
+        return await this.updateOne(
+            { _id: userId },
+            { $pull: { locations: locationId } },
+            { session }
+        );
+    }
+
     // TODO: need to be test more carefully (edge cases)
     async findUsersWithDevice(serialNumber: string, session: ClientSession): Promise<User[]> {
         return await this.aggregate([
