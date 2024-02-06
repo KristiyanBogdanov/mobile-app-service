@@ -75,7 +75,7 @@ export class AuthService {
 
         try {
             const createdUser = await this.userService.create(user, session);
-            const userDto = this.userService.mapToUserDto(createdUser);
+            const userDto = await this.userService.mapToUserDto(createdUser);
 
             const { accessToken, refreshToken } = await this.generateTokens({ sub: createdUser.id });
             await this.updateRefreshToken(createdUser.id, refreshToken, session);
@@ -125,7 +125,7 @@ export class AuthService {
             session.endSession();
         }
 
-        const userDto = this.userService.mapToUserDto(user);
+        const userDto = await this.userService.mapToUserDto(user);
 
         return new SignInRes({
             ...userDto,

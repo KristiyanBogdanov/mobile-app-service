@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { ClientSession, Model } from 'mongoose';
+import { ClientSession, Model, Document } from 'mongoose';
 import { EntityRepository } from '../../database';
-import { BriefUserInfo } from '../../user/schema';
 import { Location } from '../schema';
 
 @Injectable()
@@ -11,10 +10,10 @@ export class LocationRepository extends EntityRepository<Location> {
         super(model);
     }
 
-    async shareWith(briefUser: BriefUserInfo, locationId: string, session: ClientSession): Promise<number> {
+    async shareWith(userId: string, locationId: string, session: ClientSession): Promise<number> {
         return await this.updateOne(
             { _id: locationId },
-            { $addToSet: { sharedWith: briefUser } },
+            { $addToSet: { sharedWith: userId } },
             { session }
         );
     }

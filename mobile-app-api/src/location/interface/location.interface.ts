@@ -1,4 +1,5 @@
-import { IBriefUserInfo } from '../../user/interface';
+import { IUser } from '../../user/interface';
+import { ISolarTracker } from './solar-tracker.interface';
 
 export interface ILocation {
     id: string;
@@ -9,5 +10,5 @@ export interface ILocation {
     weatherStation?: string;
     cctv?: string;
     owner: string;
-    sharedWith: IBriefUserInfo[];
+    sharedWith: IUser[];
 }

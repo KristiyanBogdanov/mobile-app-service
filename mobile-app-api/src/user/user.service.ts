@@ -1,12 +1,12 @@
 import { ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import { ClientSession } from 'mongoose';
+import { ClientSession, Document } from 'mongoose';
 import { plainToClass } from 'class-transformer';
 import { ErrorCode } from '../shared/exception';
 import { AddLocationReq, LocationDto } from '../location/dto';
 import { LocationService } from '../location/location.service';
 import { FirebaseService } from '../firebase/firebase.service';
 import { UserRepository } from './repository';
-import { BriefUserInfo, HwNotification, User } from './schema';
+import { HwNotification, User } from './schema';
 import { UserDto, SendHwNotificationReq, UpdateHwNotificationStatusReq, HwNotificationDto } from './dto';
 
 @Injectable()
@@ -17,18 +17,14 @@ export class UserService {
         private readonly firebaseService: FirebaseService
     ) { }
 
-    async create(user: User, session?: ClientSession): Promise<User> {
+    async create(user: User, session: ClientSession): Promise<User> {
         const emailIsAlreadyUsed = await this.repository.findOne({ email: user.email });
 
         if (emailIsAlreadyUsed) {
             throw new ConflictException();
         }
 
-        if (session) {
-            return await this.repository.createInSession(user, session);
-        } else {
-            return await this.repository.create(user);
-        }
+        return await this.repository.createInSession(user, session);
     }
 
     private mapToHwNotificationDto(hwNotification: HwNotification): HwNotificationDto {
@@ -37,17 +33,20 @@ export class UserService {
         return hwNotificationDto;
     }
 
-    mapToUserDto(user: User): UserDto {
+    async mapToUserDto(user: User): Promise<UserDto> {
         const userDto = plainToClass(UserDto, user);
-        userDto.locations = user.locations.map(
-            (location) => this.locationService.mapToLocationDto(user.id, location)
+    
+        userDto.locations = await Promise.all(
+            user.locations.map(
+                (location) => this.locationService.mapToLocationDto(user.id, location as any)
+            )
         );
+
         userDto.hwNotifications = user.hwNotifications.map(this.mapToHwNotificationDto);
 
         return userDto;
     }
 
-    // TODO: check the usage of this method
     async fetchData(userId: string): Promise<UserDto> {
         const user = await this.repository.findById(userId);
 
@@ -56,16 +55,6 @@ export class UserService {
         }
 
         return this.mapToUserDto(user);
-    }
-
-    private async getBriefUserInfo(userId: string, session?: ClientSession): Promise<BriefUserInfo> {
-        const user = await this.repository.findById(userId, {}, { session });
-
-        if (!user) {
-            throw new NotFoundException(ErrorCode.UserNotFound);
-        }
-
-        return { id: user.id, username: user.username };
     }
 
     private async addLocationToUser(userId: string, locationId: string, session: ClientSession) {
@@ -81,14 +70,18 @@ export class UserService {
         session.startTransaction();
 
         try {
-            const briefUser = await this.getBriefUserInfo(userId, session);
+            const user = await this.repository.findById(userId);
 
-            const newLocation = await this.locationService.addNew(briefUser, locationData, session);
+            if (!user) {
+                throw new NotFoundException();
+            }
+
+            const newLocation = await this.locationService.addNew(user, locationData, session);
             await this.addLocationToUser(userId, newLocation.id, session);
 
             await session.commitTransaction();
 
-            return this.locationService.mapToLocationDto(userId, newLocation);
+            return await this.locationService.mapToLocationDto(userId, newLocation as any);
         } catch (error) {
             await session.abortTransaction();
             throw error;
@@ -102,14 +95,18 @@ export class UserService {
         session.startTransaction();
 
         try {
-            const briefUser = await this.getBriefUserInfo(userId, session);
+            const user = await this.repository.findById(userId);
 
-            const location = await this.locationService.share(briefUser, locationUuid, session);
+            if (!user) {
+                throw new NotFoundException();
+            }
+
+            const location = await this.locationService.share(user, locationUuid, session);
             await this.addLocationToUser(userId, location.id, session);
 
             await session.commitTransaction();
 
-            return this.locationService.mapToLocationDto(userId, location);
+            return this.locationService.mapToLocationDto(userId, location as any);
         } catch (error) {
             await session.abortTransaction();
             throw error;
@@ -194,6 +191,16 @@ export class UserService {
         } finally {
             session.endSession();
         }
+    }
+
+    async getNotifications(userId: string): Promise<HwNotificationDto[]> {
+        const user = await this.repository.findById(userId);
+
+        if (!user) {
+            throw new NotFoundException();
+        }
+
+        return user.hwNotifications.map(this.mapToHwNotificationDto);
     }
 
     async updateHwNotificationStatus(userId: string, notificationId: string, updateData: UpdateHwNotificationStatusReq): Promise<void> {
