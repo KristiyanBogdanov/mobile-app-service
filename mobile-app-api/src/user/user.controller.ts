@@ -4,7 +4,7 @@ import { AuthNotRequired } from '../shared/decorator';
 import { JwtPayload } from '../auth/type';
 import { AddLocationReq, LocationDto } from '../location/dto';
 import { UserService } from './user.service';
-import { UserDto, SendHwNotificationReq, UpdateHwNotificationStatusReq } from './dto';
+import { UserDto, SendHwNotificationReq, UpdateHwNotificationStatusReq, HwNotificationDto } from './dto';
 
 @Controller('user')
 export class UserController {
@@ -16,25 +16,38 @@ export class UserController {
         return await this.service.fetchData(payload.sub);
     }
 
-    // TODO: rename to /location
+    // TODO: rename to /locations
     @Post('/add-location')
     async addNewLocation(@Req() request: Request, @Body() locationData: AddLocationReq): Promise<LocationDto> {
         const payload = request.user as JwtPayload;
         return await this.service.addNewLocation(payload.sub, locationData);
     }
 
-    // TODO: rename to /location/:locationUuid
+    // TODO: rename to /locations/:locationUuid
     @Post('/add-location/:locationUuid')
     async addExistingLocation(@Req() request: Request, @Param('locationUuid') locationUuid: string): Promise<LocationDto> {
         const payload = request.user as JwtPayload;
         return await this.service.addExistingLocation(payload.sub, locationUuid);
     }
 
-    // TODO: rename to /hw-notification
+    @Delete('/location/:locationId')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async removeLocation(@Req() request: Request, @Param('locationId') locationId: string): Promise<void> {
+        const payload = request.user as JwtPayload;
+        return await this.service.removeLocation(payload.sub, locationId);
+    }
+
+    // TODO: rename to /hw-notifications
     @AuthNotRequired()
     @Post('/send-hw-notification')
     async sendHwNotification(@Body() notificationData: SendHwNotificationReq): Promise<void> {
         return await this.service.sendHwNotification(notificationData);
+    }
+
+    @Get('/notifications')
+    async fetchNotifications(@Req() request: Request): Promise<HwNotificationDto[]> {
+        const payload = request.user as JwtPayload;
+        return await this.service.getNotifications(payload.sub);
     }
 
     @Patch('/hw-notification/:id')

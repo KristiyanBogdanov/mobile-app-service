@@ -40,6 +40,14 @@ export abstract class EntityRepository<T> {
         return result.modifiedCount;
     }
 
+    async deleteById(
+        entityId: string, 
+        options?: Record<string, unknown>
+    ): Promise<number> {
+        const result = await this.entityModel.deleteOne({ _id : entityId }, options);
+        return result.deletedCount;
+    }
+
     async startSession(): Promise<ClientSession> {
         return await this.entityModel.db.startSession();
     }

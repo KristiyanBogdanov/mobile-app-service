@@ -1,19 +1,24 @@
-import { Controller, Get, Param, Req, UseFilters } from '@nestjs/common';
+import { Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Req, UseFilters } from '@nestjs/common';
 import { Request } from 'express';
 import { AxiosErrorFilter } from '../shared/filter';
 import { JwtPayload } from '../auth/type';
 import { LocationService } from './location.service';
-import { GetLocationInsightsRes, ValidateSerialNumberRes } from './dto';
+import { GetLocationInsightsRes, GetLocationLimitsRes, SolarTrackerInsightsDto, ValidateSerialNumberRes, WeatherStationInsightsDto } from './dto';
 
 @Controller('location')
 export class LocationController {
     constructor(private readonly service: LocationService) { }
 
+    @Get('/limits')
+    getLimits(): GetLocationLimitsRes {
+        return this.service.getLimits();
+    }
+    
     @Get('/validate/st-serial-number/:serialNumber')
     @UseFilters(new AxiosErrorFilter())
     async validateSTSerialNumber(@Req() request: Request, @Param('serialNumber') serialNumber: string): Promise<ValidateSerialNumberRes> {
         const payload = request.user as JwtPayload;
-        return await this.service.validateSTSerialNumber(payload.sub, serialNumber);
+        return (await this.service.validateSTSerialNumber(payload.sub, serialNumber)).validateSTSerialNumberRes;
     }
 
     @Get('/validate/ws-serial-number/:serialNumber')
@@ -25,7 +30,47 @@ export class LocationController {
     @Get('/:locationId/insights')
     @UseFilters(new AxiosErrorFilter())
     async getInsights(@Param('locationId') locationId: string): Promise<GetLocationInsightsRes> {
-        
         return await this.service.getInsights(locationId);
+    }
+
+    @Get('/insights/weather-stations/:wsSerialNumber')
+    @UseFilters(new AxiosErrorFilter())
+    async getWeatherStationInsights(@Param('wsSerialNumber') wsSerialNumber: string): Promise<WeatherStationInsightsDto> {
+        return await this.service.getWeatherStationInsights(wsSerialNumber);
+    }
+
+    @Post('/:locationId/weather-stations/:wsSerialNumber')
+    @UseFilters(new AxiosErrorFilter())
+    async addWeatherStation(@Req() request: Request, @Param('locationId') locationId: string, @Param('wsSerialNumber') wsSerialNumber: string): Promise<void> {
+        const payload = request.user as JwtPayload;
+        return await this.service.addWeatherStation(payload.sub, locationId, wsSerialNumber);
+    }
+
+    // TODO: rename to weather-station
+    @Delete('/:locationId/weather-stations')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async removeWeatherStation(@Req() request: Request, @Param('locationId') locationId: string): Promise<void> {
+        const payload = request.user as JwtPayload;
+        return await this.service.removeWeatherStation(payload.sub, locationId);
+    }
+
+    @Get('/:locationId/insights/solar-trackers/:stSerialNumber')
+    @UseFilters(new AxiosErrorFilter())
+    async getSolarTrackersInsights(@Param('locationId') locationId: string, @Param('stSerialNumber') stSerialNumber: string): Promise<SolarTrackerInsightsDto> {
+        return await this.service.getSolarTrackersInsights(locationId, stSerialNumber);
+    }
+
+    @Post('/:locationId/solar-trackers/:stSerialNumber')
+    @UseFilters(new AxiosErrorFilter())
+    async addSolarTracker(@Req() request: Request, @Param('locationId') locationId: string, @Param('stSerialNumber') stSerialNumber: string): Promise<void> {
+        const payload = request.user as JwtPayload;
+        return await this.service.addSolarTracker(payload.sub, locationId, stSerialNumber);
+    }
+
+    @Delete('/:locationId/solar-trackers/:stSerialNumber')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async removeSolarTracker(@Req() request: Request, @Param('locationId') locationId: string, @Param('stSerialNumber') stSerialNumber: string): Promise<void> {
+        const payload = request.user as JwtPayload;
+        return await this.service.removeSolarTracker(payload.sub, locationId, stSerialNumber);
     }
 }

@@ -26,3 +26,6 @@ bootstrap();
 
 // TODO: rename endpoints using plurals
 // TODO: error handling
+// TODO: add logging
+// TOD: fix capacity!!!!!!!!!
+// TODO: order notifications by date when change to lookup

@@ -1,14 +1,14 @@
-import { IBriefUserInfo } from '../../user/interface';
+import { IUser } from '../../user/interface';
+import { ISolarTracker } from './solar-tracker.interface';
 
 export interface ILocation {
     id: string;
     uuid: string;
     name: string;
-    location: string; // TODO: refactor to be a lat/long object
     capacity: number;
     solarTrackers: string[];
     weatherStation?: string;
     cctv?: string;
     owner: string;
-    sharedWith: IBriefUserInfo[];
+    sharedWith: IUser[];
 }

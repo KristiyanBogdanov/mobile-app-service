@@ -1,4 +1,9 @@
-export class ValidateSerialNumberHwApiRes {
+export class ValidateSTSerialNumberHwApiRes {
+    isValid: boolean;
+    capacity?: number;
+}
+
+export class ValidateWSSerialNumberHwApiRes {
     isValid: boolean;
 }
 

@@ -16,6 +16,7 @@ export class SolarTrackerInsightsDto {
         azimuthMotor: boolean;
         elevationMotor: boolean;
     };
+    capacity: number;
     isActive: boolean;
     lastUpdate: string;
     coordinates: CoordinatesDto;
@@ -49,11 +50,8 @@ export class SolarTrackersInsightsHwApiRes {
 export class WeatherStationInsightsHwApiRes extends WeatherStationInsightsDto { }
 
 export class GetLocationInsightsRes {
-    coordinates: CoordinatesDto;
     solarTrackers: SolarTrackerInsightsDto[];
     weatherStation: WeatherStationInsightsDto;
 }
 
-
-// TODO: remove location from locationDto
 // TODO: add validation
