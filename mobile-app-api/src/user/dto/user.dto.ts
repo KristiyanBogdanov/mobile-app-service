@@ -3,6 +3,7 @@ import { Exclude } from 'class-transformer';
 import { LocationDto } from '../../location/dto';
 import { HwNotificationDto } from './hw-notification.dto';
 import { User } from '../schema';
+import { InvitationDto } from './invitation.dto';
 
 @Exclude()
 export class UserDto extends PickType(User, [
@@ -12,4 +13,5 @@ export class UserDto extends PickType(User, [
 ]) {
     locations: LocationDto[];
     hwNotifications: HwNotificationDto[];
+    invitations: InvitationDto[];
 }

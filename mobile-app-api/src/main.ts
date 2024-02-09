@@ -29,3 +29,5 @@ bootstrap();
 // TODO: add logging
 // TOD: fix capacity!!!!!!!!!
 // TODO: order notifications by date when change to lookup
+
+// TODO: pri logout trii device token ot koeto ustrojstvo e pratena zaiavka za logout

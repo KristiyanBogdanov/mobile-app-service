@@ -7,6 +7,7 @@ import { ErrorCode } from '../../shared/exception';
 import { Location } from '../../location/schema';
 import { IUser } from '../interface';
 import { HwNotification } from './hw-notification.schema';
+import { Invitation } from './invitation.schema';
 
 @Exclude()
 @Schema({
@@ -63,6 +64,14 @@ export class User implements IUser {
         default: [],
     })
     hwNotifications: HwNotification[];
+
+    @Expose()
+    @Type(() => Invitation)
+    @Prop({
+        type: [Invitation],
+        default: [],
+    })
+    invitations: Invitation[];
 
     @Expose()
     @Prop()

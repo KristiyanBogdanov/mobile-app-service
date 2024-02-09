@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { ClientSession, Document, Model, Types } from 'mongoose';
+import { ClientSession, Document, Model } from 'mongoose';
 import { EntityRepository } from '../../database';
-import { HwNotification, User } from '../schema';
+import { HwNotification, Invitation, User } from '../schema';
 import { NotificationStatus } from '../enum';
 
 @Injectable()
@@ -12,7 +12,7 @@ export class UserRepository extends EntityRepository<User> {
     }
 
     async findById(
-        entityId: string, 
+        entityId: string,
         projection?: Record<string, unknown>,
         options?: Record<string, unknown>
     ): Promise<(User & Document) | null> {
@@ -21,7 +21,7 @@ export class UserRepository extends EntityRepository<User> {
     }
 
     async findOne(
-        filter: Record<string, unknown>, 
+        filter: Record<string, unknown>,
         projection?: Record<string, unknown>,
         options?: Record<string, unknown>
     ): Promise<(User & Document) | null> {
@@ -39,8 +39,16 @@ export class UserRepository extends EntityRepository<User> {
 
     async updateFcmTokens(userId: string, fcmToken: string, session?: ClientSession): Promise<number> {
         return await this.updateOne(
-            { _id: userId }, 
+            { _id: userId },
             { $addToSet: { fcmTokens: fcmToken } },
+            { session }
+        );
+    }
+
+    async clearFcmTokens(userId: string, session: ClientSession): Promise<number> {
+        return await this.updateOne(
+            { _id: userId },
+            { $set: { fcmTokens : [] } },
             { session }
         );
     }
@@ -57,6 +65,21 @@ export class UserRepository extends EntityRepository<User> {
         return await this.updateOne(
             { _id: userId },
             { $pull: { locations: locationId } },
+            { session }
+        );
+    }
+
+    async addInvitation(userId: string, invitation: Invitation): Promise<number> {
+        return await this.updateOne(
+            { _id: userId },
+            { $push: { invitations: invitation } }
+        );
+    }
+
+    async removeInvitation(userId: string, invitationId: string, session: ClientSession): Promise<number> {
+        return await this.updateOne(
+            { _id: userId },
+            { $pull: { invitations: { _id: invitationId } } },
             { session }
         );
     }
@@ -86,7 +109,14 @@ export class UserRepository extends EntityRepository<User> {
     async addHwNotification(userId: string, hwNotification: HwNotification, session: ClientSession): Promise<number> {
         return await this.updateOne(
             { _id: userId },
-            { $addToSet: { hwNotifications: hwNotification } },
+            {
+                $push: {
+                    hwNotifications: {
+                        $each: [hwNotification],
+                        $slice: -10
+                    }
+                }
+            },
             { session }
         );
     }
@@ -99,7 +129,7 @@ export class UserRepository extends EntityRepository<User> {
     }
 
     async deleteHwNotification(userId: string, hwNotificationId: string): Promise<number> {
-      return await this.updateOne(
+        return await this.updateOne(
             { _id: userId },
             { $pull: { hwNotifications: { _id: hwNotificationId } } }
         );

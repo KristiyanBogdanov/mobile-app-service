@@ -1,3 +1,4 @@
 export type JwtPayload = {
-    sub: string;
+    id: string;
+    fcmToken: string;
 };

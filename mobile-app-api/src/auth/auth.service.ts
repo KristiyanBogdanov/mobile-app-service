@@ -77,7 +77,7 @@ export class AuthService {
             const createdUser = await this.userService.create(user, session);
             const userDto = await this.userService.mapToUserDto(createdUser);
 
-            const { accessToken, refreshToken } = await this.generateTokens({ sub: createdUser.id });
+            const { accessToken, refreshToken } = await this.generateTokens({ id: createdUser.id, fcmToken: sigupData.fcmToken });
             await this.updateRefreshToken(createdUser.id, refreshToken, session);
 
             await session.commitTransaction();
@@ -108,7 +108,7 @@ export class AuthService {
             throw new UnauthorizedException();
         }
 
-        const tokens = await this.generateTokens({ sub: user.id });
+        const tokens = await this.generateTokens({ id: user.id, fcmToken: signinData.fcmToken });
 
         const session = await this.userRepository.startSession();
         session.startTransaction();
@@ -135,10 +135,25 @@ export class AuthService {
     }
 
     async signout(userId: string): Promise<void> {
-        await this.updateRefreshToken(userId, null);
+        const session = await this.userRepository.startSession();
+        session.startTransaction();
+
+        try {
+            await Promise.all([
+                this.updateRefreshToken(userId, null, session),
+                this.userRepository.clearFcmTokens(userId, session),
+            ]);
+
+            await session.commitTransaction();
+        } catch (error) {
+            await session.abortTransaction();
+            throw error;
+        } finally {
+            session.endSession();
+        }
     }
 
-    async refreshTokens(userId: string, refreshToken: string): Promise<RefreshTokensRes> {
+    async refreshTokens(userId: string, fcmToken: string, refreshToken: string): Promise<RefreshTokensRes> {
         const user = await this.userRepository.findById(userId);
 
         if (!user || !user.refreshToken) {
@@ -151,7 +166,7 @@ export class AuthService {
             throw new ForbiddenException();
         }
 
-        const tokens = await this.generateTokens({ sub: user.id });
+        const tokens = await this.generateTokens({ id: user.id,  fcmToken });
         await this.updateRefreshToken(user.id, tokens.refreshToken);
 
         return tokens;

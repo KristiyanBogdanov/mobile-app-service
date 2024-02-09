@@ -8,6 +8,8 @@ import { HwApi } from '../shared/api';
 import { LOCATION_NAME_MAX_LENGTH, LOCATION_NAME_MIN_LENGTH } from '../shared/constants';
 import { User } from '../user/schema';
 import { BriefUserInfo } from '../user/dto';
+import { FirebaseService } from '../firebase/firebase.service';
+import { NotificationType } from '../firebase/enum';
 import { LocationRepository } from './repository';
 import { Location } from './schema';
 import {
@@ -24,7 +26,8 @@ export class LocationService {
     constructor(
         private readonly hwApi: HwApi,
         private readonly httpService: HttpService,
-        private readonly locationRepository: LocationRepository
+        private readonly locationRepository: LocationRepository,
+        private readonly firebaseService: FirebaseService
     ) { }
 
     getLimits(): GetLocationLimitsRes {
@@ -32,6 +35,16 @@ export class LocationService {
             nameMinLength: LOCATION_NAME_MIN_LENGTH,
             nameMaxLength: LOCATION_NAME_MAX_LENGTH,
         };
+    }
+
+    async getLocation(userId: string, locationId: string): Promise<LocationDto> {
+        const location = await this.locationRepository.findById(locationId);
+
+        if (!location) {
+            throw new NotFoundException();
+        }
+
+        return await this.mapToLocationDto(userId, location);
     }
 
     async validateSTSerialNumber(userId: string, serialNumber: string, session?: ClientSession): Promise<{
@@ -194,23 +207,46 @@ export class LocationService {
         return location;
     }
 
+    private async sendLocationUpdateNotification(currFcmToken: string, location: Location & Document): Promise<void> {
+        await location.populate('sharedWith');
+
+        location.sharedWith.forEach((user) => {
+            user.fcmTokens.forEach((fcmToken) => {
+                if (fcmToken === currFcmToken) {
+                    return;
+                }
+                
+                this.firebaseService.sendPushNotification(fcmToken, {
+                    notificationType: NotificationType.LocationUpdate,
+                    body: {
+                        locationId: location.id,
+                    }
+                });
+            });
+        });
+    }
+
     async getWeatherStationInsights(wsSerialNumber: string): Promise<WeatherStationInsightsDto> {
         return await this.getWeatherStationInsightsHwApiRes(wsSerialNumber);
     }
 
-    async addWeatherStation(userId: string, locationId: string, wsSerialNumber: string): Promise<void> {
+    async addWeatherStation(userId: string, currFcmToken: string, locationId: string, wsSerialNumber: string): Promise<void> {
         const location = await this.checkIfUserIsOwner(userId, locationId);
         await this.validateWSCanBeAdd(wsSerialNumber);
 
         location.weatherStation = wsSerialNumber;
         await location.save();
+
+        this.sendLocationUpdateNotification(currFcmToken, location);
     }
 
-    async removeWeatherStation(userId: string, locationId: string): Promise<void> {
+    async removeWeatherStation(userId: string, currFcmToken: string, locationId: string): Promise<void> {
         const location = await this.checkIfUserIsOwner(userId, locationId);
 
         location.weatherStation = null;
         await location.save();
+
+        this.sendLocationUpdateNotification(currFcmToken, location);
     }
 
     async getSolarTrackersInsights(locationId: string, stSerialNumber: string): Promise<SolarTrackerInsightsDto> {
@@ -219,16 +255,18 @@ export class LocationService {
         return stInsights.data[stSerialNumber];
     }
 
-    async addSolarTracker(userId: string, locationId: string, stSerialNumber: string): Promise<void> {
+    async addSolarTracker(userId: string, currFcmToken: string, locationId: string, stSerialNumber: string): Promise<void> {
         const location = await this.checkIfUserIsOwner(userId, locationId);
         const capacity = await this.validateSTCanBeAdd(userId, stSerialNumber);
         
         location.solarTrackers.push(stSerialNumber);
         location.capacity += capacity;
         await location.save();
+
+        this.sendLocationUpdateNotification(currFcmToken, location);
     }
 
-    async removeSolarTracker(userId: string, locationId: string, stSerialNumber: string): Promise<void> {
+    async removeSolarTracker(userId: string, currFcmToken: string, locationId: string, stSerialNumber: string): Promise<void> {
         const location = await this.checkIfUserIsOwner(userId, locationId);
 
         const index = location.solarTrackers.indexOf(stSerialNumber);
@@ -240,9 +278,11 @@ export class LocationService {
         location.solarTrackers.splice(index, 1);
         location.capacity -= 6; // TODO: change this to the real capacity
         await location.save();
+
+        this.sendLocationUpdateNotification(currFcmToken, location);
     }
 
-    async remove(userId: string, locationId: string, session: ClientSession): Promise<void> {
+    async remove(userId: string, currFcmToken: string, locationId: string, session: ClientSession): Promise<void> {
         const location = await this.checkIfUserIsOwner(userId, locationId);
 
         const result = await this.locationRepository.deleteById(locationId, { session });
@@ -250,5 +290,7 @@ export class LocationService {
         if (result === 0) {
             throw new InternalServerErrorException(); // TODO: check why I need this
         }
+
+        this.sendLocationUpdateNotification(currFcmToken, location);
     }
 }
