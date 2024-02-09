@@ -10,6 +10,7 @@ export class HwNotificationDto extends PickType(HwNotification, [
     'deviceType',
     'importance',
     'message',
+    'advice',
     'timestamp',
     'status'
-]) {}
+]) { }

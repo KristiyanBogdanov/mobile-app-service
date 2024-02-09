@@ -13,3 +13,10 @@ export const STRONG_PASSWORD_OPTIONS: IsStrongPasswordOptions = {
     minSymbols: 0
 };
 export const PASSWORD_MAX_LENGTH = 128;
+
+export const INACTIVE_DEVICE_NOTIFICATION_TITLE = 'Inactive device';
+export const DEVICE_STATE_REPORT_NOTIFICATION_TITLE = 'Device state report';
+export const INVITATION_NOTIFICATION_TITLE = 'Invitation to location';
+export function getInvitationNotificationMessage(locationName: string, ownerName: string): string {
+    return `${ownerName} has invited you to join the location ${locationName}`;
+}

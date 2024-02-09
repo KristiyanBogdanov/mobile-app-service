@@ -33,13 +33,13 @@ export class AuthController {
     @Get('/signout')
     async signout(@Req() request: Request): Promise<void> {
         const payload = request.user as JwtPayload;
-        return await this.authService.signout(payload.sub);
+        return await this.authService.signout(payload.id);
     }
 
     @UseGuards(RefreshTokenGuard)
     @Get('/refresh')
     async refreshTokens(@Req() request: Request): Promise<RefreshTokensRes> {
         const payload = request.user as JwtRefresh
-        return await this.authService.refreshTokens(payload.jwtPayload.sub, payload.refreshToken);
+        return await this.authService.refreshTokens(payload.jwtPayload.id, payload.jwtPayload.fcmToken, payload.refreshToken);
     }
 }

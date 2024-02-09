@@ -1,18 +1,20 @@
-import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { app } from 'firebase-admin';
-import { Message } from 'firebase-admin/lib/messaging/messaging-api';
+import { Message, Notification } from 'firebase-admin/lib/messaging/messaging-api';
+import { FirebaseNotificationData } from './type';
 
 @Injectable()
 export class FirebaseService {
     constructor(@Inject('Firebase') private readonly firebase: app.App) { }
 
-    async sendPushNotification(fcmToken: string, title: string, body: string): Promise<string> {
+    async sendPushNotification(fcmToken: string, data: FirebaseNotificationData, notification?: Notification): Promise<string> {
         const message: Message = {
             token: fcmToken,
-            notification: {
-                title,
-                body
-            }
+            notification: notification,
+            data: {
+                'notificationType': data.notificationType,
+                'body': JSON.stringify(data.body),
+            },
         };
 
         try {

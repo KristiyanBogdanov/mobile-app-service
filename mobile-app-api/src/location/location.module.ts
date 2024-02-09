@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { HttpModule } from '@nestjs/axios';
 import { HwApi } from '../shared/api';
+import { FirebaseModule } from '../firebase/firebase.module';
 import { Location, LocationSchema } from './schema';
 import { LocationRepository } from './repository';
 import { LocationService } from './location.service';
@@ -12,7 +13,8 @@ import { LocationController } from './location.controller';
         MongooseModule.forFeature([
             { name: Location.name, schema: LocationSchema },
         ]),
-        HttpModule
+        HttpModule,
+        FirebaseModule
     ],
     controllers: [LocationController],
     providers: [
@@ -21,7 +23,8 @@ import { LocationController } from './location.controller';
         HwApi
     ],
     exports: [
-        LocationService
+        LocationService,
+        LocationRepository
     ]
 })
 export class LocationModule { }
