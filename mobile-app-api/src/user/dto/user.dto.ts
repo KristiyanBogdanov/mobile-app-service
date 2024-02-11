@@ -1,8 +1,8 @@
-import { PickType } from '@nestjs/mapped-types';
+import { PickType } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
 import { LocationDto } from '../../location/dto';
-import { HwNotificationDto } from './hw-notification.dto';
 import { User } from '../schema';
+import { HwNotificationDto } from './hw-notification.dto';
 import { InvitationDto } from './invitation.dto';
 
 @Exclude()

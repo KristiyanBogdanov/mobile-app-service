@@ -3,8 +3,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { ClientSession, Document, Model } from 'mongoose';
 import { EntityRepository } from '../../database';
 import { HwNotification, Invitation, User } from '../schema';
-import { NotificationStatus } from '../enum';
-
 @Injectable()
 export class UserRepository extends EntityRepository<User> {
     constructor(@InjectModel(User.name) userModel: Model<User>) {
@@ -37,7 +35,7 @@ export class UserRepository extends EntityRepository<User> {
         );
     }
 
-    async updateFcmTokens(userId: string, fcmToken: string, session?: ClientSession): Promise<number> {
+    async updateFcmTokens(userId: string, fcmToken: string, session: ClientSession): Promise<number> {
         return await this.updateOne(
             { _id: userId },
             { $addToSet: { fcmTokens: fcmToken } },
@@ -98,7 +96,7 @@ export class UserRepository extends EntityRepository<User> {
             {
                 $match: {
                     $or: [
-                        { 'locations.solarTrackers': serialNumber },
+                        { 'locations.solarTrackers.serialNumber': serialNumber },
                         { 'locations.weatherStation': serialNumber }
                     ]
                 }
@@ -118,13 +116,6 @@ export class UserRepository extends EntityRepository<User> {
                 }
             },
             { session }
-        );
-    }
-
-    async updateHwNotificationStatus(userId: string, hwNotificationId: string, status: NotificationStatus): Promise<number> {
-        return await this.updateOne(
-            { _id: userId, 'hwNotifications._id': hwNotificationId },
-            { $set: { 'hwNotifications.$.status': status } }
         );
     }
 

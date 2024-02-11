@@ -1,76 +1,66 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Req } from '@nestjs/common';
 import { Request } from 'express';
 import { AuthNotRequired } from '../shared/decorator';
+import { ValidateMongoId } from '../shared/pipe';
 import { JwtPayload } from '../auth/type';
 import { AddLocationReq, LocationDto } from '../location/dto';
 import { UserService } from './user.service';
-import { UserDto, SendHwNotificationReq, UpdateHwNotificationStatusReq, HwNotificationDto, SendInvitationReq, RespondToInvitationReq } from './dto';
-import { IsEmail } from 'class-validator';
-import { ValidateEmail } from '../shared/pipe';
+import { UserDto, SendHwNotificationReq, SendInvitationReq, RespondToInvitationReq } from './dto';
 
-@Controller('user')
+@Controller('users')
 export class UserController {
-    constructor(private readonly service: UserService) { }
+    constructor(private readonly userService: UserService) { }
 
     @Get()
     async fetchData(@Req() request: Request): Promise<UserDto> {
         const payload = request.user as JwtPayload;
-        return await this.service.fetchData(payload.id);
+        return await this.userService.fetchData(payload.id);
     }
 
-    // TODO: rename to /locations
-    @Post('/add-location')
+    @Post('/locations')
     async addNewLocation(@Req() request: Request, @Body() locationData: AddLocationReq): Promise<LocationDto> {
         const payload = request.user as JwtPayload;
-        return await this.service.addNewLocation(payload.id, payload.fcmToken, locationData);
+        return await this.userService.addNewLocation(payload.id, payload.fcmToken, locationData);
+    }
+
+    @Delete('/locations/:locationId')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async removeLocation(@Req() request: Request, @Param('locationId', ValidateMongoId) locationId: string): Promise<void> {
+        const payload = request.user as JwtPayload;
+        return await this.userService.removeLocation(payload.id, payload.fcmToken, locationId);
     }
 
     @Post('/invitations')
     async inviteUserToLocation(@Req() request: Request, @Body() invitationData: SendInvitationReq): Promise<void> {
         const payload = request.user as JwtPayload;
-        return await this.service.inviteUserToLocation(payload.id, invitationData);
+        return await this.userService.inviteUserToLocation(payload.id, invitationData);
     }
 
     @Delete('/invitations/:invitationId')
     @HttpCode(HttpStatus.NO_CONTENT)
-    async respondToInvitation(@Req() request: Request, @Param('invitationId') invitationId: string, @Body() responseData: RespondToInvitationReq): Promise<void> {
+    async respondToInvitation(@Req() request: Request, @Param('invitationId', ValidateMongoId) invitationId: string, @Body() responseData: RespondToInvitationReq): Promise<void> {
         const payload = request.user as JwtPayload;
-        return await this.service.respondToInvitation(payload.id, payload.fcmToken, invitationId, responseData);
+        return await this.userService.respondToInvitation(payload.id, payload.fcmToken, invitationId, responseData);
     }
 
     // TODO: add remove user from location
 
-    @Delete('/location/:locationId')
-    @HttpCode(HttpStatus.NO_CONTENT)
-    async removeLocation(@Req() request: Request, @Param('locationId') locationId: string): Promise<void> {
-        const payload = request.user as JwtPayload;
-        return await this.service.removeLocation(payload.id, payload.fcmToken, locationId);
-    }
-
-    // TODO: rename to /hw-notifications
     @AuthNotRequired()
-    @Post('/notifications/hw/inactive-devices')
+    @Post('/hw-notifications/inactive-devices')
     async sendInactiveDevicesHwNotification(@Body() notificationData: SendHwNotificationReq): Promise<void> {
-        return await this.service.sendInactiveDevicesNotification(notificationData);
+        return await this.userService.sendInactiveDevicesNotification(notificationData);
     }
 
     @AuthNotRequired()
-    @Post('/notifications/hw/device-state-report')
+    @Post('/hw-notifications/device-state-reports')
     async sendDeviceStateReportHwNotification(@Body() notificationData: SendHwNotificationReq): Promise<void> {
-        return await this.service.sendDeviceStateReportNotification(notificationData);
+        return await this.userService.sendDeviceStateReportNotification(notificationData);
     }
 
-    @Patch('/hw-notification/:id')
-    async updateHwNotificationStatus(@Req() request: Request, @Param('id') notificationId: string, @Body() updateData: UpdateHwNotificationStatusReq): Promise<void> {
-        const payload = request.user as JwtPayload;
-        return await this.service.updateHwNotificationStatus(payload.id, notificationId, updateData);
-    }
-
-    @Delete('/hw-notification/:id')
+    @Delete('/hw-notifications/:hwNotificationId')
     @HttpCode(HttpStatus.NO_CONTENT)
-    async deleteHwNotification(@Req() request: Request, @Param('id') notificationId: string): Promise<void> {
-        console.log('notificationId', notificationId);
+    async deleteHwNotification(@Req() request: Request, @Param('hwNotificationId', ValidateMongoId) hwNotificationId: string): Promise<void> {
         const payload = request.user as JwtPayload;
-        return await this.service.deleteHwNotification(payload.id, notificationId);
+        return await this.userService.deleteHwNotification(payload.id, hwNotificationId);
     }
 }

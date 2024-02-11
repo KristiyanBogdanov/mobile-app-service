@@ -26,7 +26,6 @@ export class AuthController {
     @Post('/signin')
     @HttpCode(HttpStatus.OK)
     async signin(@Body() signinData: SignInReq): Promise<SignInRes> {
-        console.log('signinData', signinData);
         return await this.authService.signin(signinData);
     }
 

@@ -1,1 +1,1 @@
-export * from './validate-email.pipe';
+export * from './validate-mongo-id.pipe';

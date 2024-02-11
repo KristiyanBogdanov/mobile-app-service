@@ -91,7 +91,7 @@ export class AuthService {
             await session.abortTransaction();
             throw error;
         } finally {
-            session.endSession();
+            await session.endSession();
         }
     }
 
@@ -114,15 +114,17 @@ export class AuthService {
         session.startTransaction();
 
         try {
-            await this.updateRefreshToken(user.id, tokens.refreshToken, session);
-            await this.userRepository.updateFcmTokens(user.id, signinData.fcmToken, session);
+            await Promise.all([
+                this.updateRefreshToken(user.id, tokens.refreshToken, session),
+                this.userRepository.updateFcmTokens(user.id, signinData.fcmToken, session),
+            ]);
 
             await session.commitTransaction();
         } catch (error) {
             await session.abortTransaction();
             throw error;
         } finally {
-            session.endSession();
+            await session.endSession();
         }
 
         const userDto = await this.userService.mapToUserDto(user);
@@ -149,7 +151,7 @@ export class AuthService {
             await session.abortTransaction();
             throw error;
         } finally {
-            session.endSession();
+            await session.endSession();
         }
     }
 

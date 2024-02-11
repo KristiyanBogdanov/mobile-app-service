@@ -1,4 +1,4 @@
-import { PickType } from '@nestjs/mapped-types';
+import { PickType } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
 import { HwNotification } from '../schema';
 
@@ -12,5 +12,4 @@ export class HwNotificationDto extends PickType(HwNotification, [
     'message',
     'advice',
     'timestamp',
-    'status'
 ]) { }

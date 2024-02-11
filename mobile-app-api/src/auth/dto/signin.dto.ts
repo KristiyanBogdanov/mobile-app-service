@@ -4,15 +4,15 @@ import { UserDto } from '../../user/dto';
 
 export class SignInReq {
     @IsEmail()
-    email: string;
+    readonly email: string;
 
     @IsString()
     @IsNotEmpty()
-    password: string;
+    readonly password: string;
 
     @IsString()
     @IsNotEmpty()
-    fcmToken: string;
+    readonly fcmToken: string;
 }
 
 @Exclude()

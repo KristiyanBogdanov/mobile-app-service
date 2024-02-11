@@ -1,33 +1,31 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
-import { HttpExceptionFilter, MongoErrorFilter, ValidationExceptionFilter } from './shared/filter';
-import { ValidationException } from './shared/exception';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { Logger, LoggerErrorInterceptor } from 'nestjs-pino';
+import { MongoErrorFilter } from './shared/filter';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppModule, { bufferLogs: true });
+
+    app.useLogger(app.get(Logger));
+    app.useGlobalInterceptors(new LoggerErrorInterceptor());
 
     app.setGlobalPrefix('mobile-app-api/v1');
 
     app.useGlobalFilters(new MongoErrorFilter());
-    app.useGlobalFilters(new ValidationExceptionFilter());
-    app.useGlobalFilters(new HttpExceptionFilter());
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
 
-    app.useGlobalPipes(new ValidationPipe({
-        whitelist: true,
-        exceptionFactory: (errors) => {
-            return new ValidationException(errors);
-        }
-    }));
+    const config = new DocumentBuilder()
+        .setTitle('Mobile App API')
+        .setVersion('1.0')
+        .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api', app, document);
 
     await app.listen(3001);
 }
 bootstrap();
 
-// TODO: rename endpoints using plurals
-// TODO: error handling
-// TODO: add logging
-// TOD: fix capacity!!!!!!!!!
-// TODO: order notifications by date when change to lookup
 
-// TODO: pri logout trii device token ot koeto ustrojstvo e pratena zaiavka za logout
+// TODO: order notifications by date when change to lookup

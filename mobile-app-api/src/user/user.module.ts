@@ -21,7 +21,7 @@ import { UserRepository } from './repository';
         UserRepository
     ],
     exports: [
-        UserService, 
+        UserService,
         UserRepository
     ]
 })

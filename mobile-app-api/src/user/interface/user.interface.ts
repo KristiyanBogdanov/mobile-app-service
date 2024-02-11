@@ -10,8 +10,4 @@ export interface IUser {
     locations: ILocation[];
     hwNotifications: IHwNotification[];
     refreshToken: string;
-
-    // TODO: Add this later
-    // country: string;
-    // birthday: Date;
 }

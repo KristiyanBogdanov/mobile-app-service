@@ -1,17 +1,16 @@
 import { Prop, Schema } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
 import { Exclude, Expose } from 'class-transformer';
-import { IsDateString, IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { IsDateString, IsNotEmpty, IsString } from 'class-validator';
 import { NotificationType } from '../../firebase/enum';
 import { IHwNotification } from '../interface';
-import { NotificationStatus } from '../enum';
 
 @Exclude()
 @Schema({
     versionKey: false,
 })
 export class HwNotification implements IHwNotification {
-    _id: Types.ObjectId;
+    private _id: Types.ObjectId;
 
     @Expose()
     id: string;
@@ -59,19 +58,9 @@ export class HwNotification implements IHwNotification {
     @Prop({ required: true })
     timestamp: Date;
 
-    @Expose()
-    @IsEnum(NotificationStatus)
-    @Prop({
-        type: String,
-        enum: NotificationStatus,
-        required: true,
-    })
-    status: NotificationStatus;
-
     constructor(hwNotification: Partial<HwNotification>) {
         Object.assign(this, hwNotification);
         this._id = new Types.ObjectId();
         this.id = this._id.toHexString();
-        this.status = NotificationStatus.Active;
     }
 }

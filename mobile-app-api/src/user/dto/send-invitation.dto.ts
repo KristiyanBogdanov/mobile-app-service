@@ -2,8 +2,8 @@ import { IsEmail, IsMongoId } from 'class-validator';
 
 export class SendInvitationReq {
     @IsMongoId()
-    locationId: string;
+    readonly locationId: string;
 
     @IsEmail()
-    invitedUserEmail: string;
+    readonly invitedUserEmail: string;
 }

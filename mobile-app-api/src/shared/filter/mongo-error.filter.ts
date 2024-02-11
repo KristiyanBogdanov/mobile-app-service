@@ -8,11 +8,8 @@ export class MongoErrorFilter implements ExceptionFilter {
         const response = ctx.getResponse();
 
         response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-            error: {
-                type: error.name,
-                mongoCode: error.code,
-                message: error.message,
-            }
+            statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+            message: error.message,
         });
     }
 }	

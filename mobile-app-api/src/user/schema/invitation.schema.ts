@@ -8,7 +8,7 @@ import { IInvitation } from '../interface';
     versionKey: false,
 })
 export class Invitation implements IInvitation {
-    _id: Types.ObjectId;
+    private _id: Types.ObjectId;
 
     @Expose()
     id: string;

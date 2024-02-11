@@ -1,6 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-import { v4 as uuidv4 } from 'uuid';
 import { lastValueFrom } from 'rxjs';
 import { ClientSession, Document } from 'mongoose';
 import { plainToClass } from 'class-transformer';
@@ -13,20 +12,18 @@ import { NotificationType } from '../firebase/enum';
 import { LocationRepository } from './repository';
 import { Location } from './schema';
 import {
-    AddLocationReq, LocationDto,
-    ValidateSTSerialNumberHwApiRes, ValidateWSSerialNumberHwApiRes, ValidateSerialNumberRes,
-    GetLocationInsightsRes, SolarTrackersInsightsHwApiRes, WeatherStationInsightsHwApiRes,
-    GetLocationLimitsRes,
-    WeatherStationInsightsDto,
-    SolarTrackerInsightsDto
+    GetLocationLimitsRes, AddLocationReq, LocationDto,
+    ValidateSTSerialNumberHwApiRes, ValidateWSSerialNumberHwApiRes, ValidateSTSerialNumberRes, ValidateWSSerialNumberRes,
+    GetLocationInsightsRes, SolarTrackersInsightsHwApiRes, WeatherStationInsightsHwApiRes, WeatherStationInsightsDto, SolarTrackerInsightsDto,
+    SolarTrackerDto
 } from './dto';
 
 @Injectable()
 export class LocationService {
     constructor(
+        private readonly locationRepository: LocationRepository,
         private readonly hwApi: HwApi,
         private readonly httpService: HttpService,
-        private readonly locationRepository: LocationRepository,
         private readonly firebaseService: FirebaseService
     ) { }
 
@@ -35,6 +32,19 @@ export class LocationService {
             nameMinLength: LOCATION_NAME_MIN_LENGTH,
             nameMaxLength: LOCATION_NAME_MAX_LENGTH,
         };
+    }
+
+    async mapToLocationDto(userId: string, location: Location & Document): Promise<LocationDto> {
+        await location.populate('sharedWith');
+
+        const sharedWithFiltered = location.sharedWith.filter((user) => user.id !== userId);
+
+        const locationDto = plainToClass(LocationDto, location);
+        locationDto.solarTrackers = location.solarTrackers.map((st) => plainToClass(SolarTrackerDto, st));
+        locationDto.sharedWith = sharedWithFiltered.map((user) => plainToClass(BriefUserInfo, user));
+        locationDto.amIOwner = location.owner === userId;
+
+        return locationDto;
     }
 
     async getLocation(userId: string, locationId: string): Promise<LocationDto> {
@@ -47,36 +57,30 @@ export class LocationService {
         return await this.mapToLocationDto(userId, location);
     }
 
-    async validateSTSerialNumber(userId: string, serialNumber: string, session?: ClientSession): Promise<{
-        validateSTSerialNumberRes: ValidateSerialNumberRes,
-        capacity?: number
-    }> {
+    async validateSTSerialNumber(userId: string, serialNumber: string, session?: ClientSession): Promise<ValidateSTSerialNumberRes> {
         const response = await lastValueFrom(
             this.httpService.get<ValidateSTSerialNumberHwApiRes>(this.hwApi.validateSTSerialNumber(serialNumber))
         ).then((response) => response.data);
 
         if (!response.isValid) {
-            return { 
-                validateSTSerialNumberRes: { isValid: false }
-            };
+            return { isValid: false };
         }
 
-        const location = await this.locationRepository.findOne({ solarTrackers: serialNumber }, {}, { session });
+        const location = await this.locationRepository.findOne({ solarTrackers: { $elemMatch: { serialNumber } } }, {}, { session });
 
         if (location) {
             const isAdded = location.sharedWith.some((user) => user.id === userId);
-            return { 
-                validateSTSerialNumberRes: { isValid: true, isUsed: true, isAdded }
-            };
+            return { isValid: true, isUsed: true, isAdded };
         }
 
-        return { 
-            validateSTSerialNumberRes: { isValid: true, isUsed: false }, 
-            capacity: response.capacity 
+        return {
+            isValid: true,
+            isUsed: false,
+            solarTracker: { serialNumber, capacity: response.capacity }
         };
     }
 
-    async validateWSSerialNumber(serialNumber: string): Promise<ValidateSerialNumberRes> {
+    async validateWSSerialNumber(serialNumber: string): Promise<ValidateWSSerialNumberRes> {
         const isValid = await lastValueFrom(
             this.httpService.get<ValidateWSSerialNumberHwApiRes>(this.hwApi.validateWSSerialNumber(serialNumber))
         ).then((response) => response.data.isValid);
@@ -84,30 +88,18 @@ export class LocationService {
         return { isValid };
     }
 
-    async mapToLocationDto(userId: string, location: Location & Document): Promise<LocationDto> {
-        await location.populate('sharedWith');
-        
-        const sharedWithFiltered = location.sharedWith.filter((user) => user.id !== userId);
-        
-        const locationDto = plainToClass(LocationDto, location);
-        locationDto.sharedWith = sharedWithFiltered.map((user) => plainToClass(BriefUserInfo, user));
-        locationDto.amIOwner = location.owner === userId;
-
-        return locationDto;
-    }
-
-    private async validateSTCanBeAdd(userId: string, serialNumber: string, session?: ClientSession): Promise<number> {
+    private async validateSTCanBeAdd(userId: string, serialNumber: string, session?: ClientSession): Promise<SolarTrackerDto> {
         const result = await this.validateSTSerialNumber(userId, serialNumber, session);
 
-        if (!result.validateSTSerialNumberRes.isValid) {
+        if (!result.isValid) {
             throw new BadRequestException();
         }
 
-        if (result.validateSTSerialNumberRes.isUsed) {
+        if (result.isUsed) {
             throw new ConflictException();
         }
 
-        return result.capacity;
+        return result.solarTracker;
     }
 
     private async validateWSCanBeAdd(serialNumber: string): Promise<void> {
@@ -118,47 +110,20 @@ export class LocationService {
         }
     }
 
-    // TODO: try to optimize this method
     async addNew(user: User, locationData: AddLocationReq, session: ClientSession): Promise<Location> {
-        let capacity = 0;
-
-        for (const serialNumber of locationData.solarTrackers) {
-            const result = await this.validateSTCanBeAdd(user.id, serialNumber, session);
-            capacity += result;
-        }
-
-        if (locationData.weatherStation) {
-            await this.validateWSCanBeAdd(locationData.weatherStation);
-        }
+        const [solarTrackers] = await Promise.all([
+            Promise.all(
+                locationData.solarTrackerSerialNumbers.map((serialNumber) => this.validateSTCanBeAdd(user.id, serialNumber, session))
+            ),
+            locationData.weatherStation ? this.validateWSCanBeAdd(locationData.weatherStation) : Promise.resolve(),
+        ]);
 
         const location = plainToClass(Location, locationData);
-        location.uuid = uuidv4();
-        location.capacity = capacity;
         location.owner = user.id;
+        location.solarTrackers = solarTrackers;
         location.sharedWith = [user];
 
         return await this.locationRepository.createInSession(location, session);
-    }
-
-    // TODO: add share requests that need to be accepted by the owner in the future
-    async share(user: User, locationUuid: string, session: ClientSession): Promise<Location> {
-        const location = await this.locationRepository.findOne({ uuid: locationUuid }, {}, { session });
-
-        if (!location) {
-            throw new BadRequestException();
-        }
-
-        if (location.sharedWith.some((alreadySharedUser) => alreadySharedUser.id === user.id)) {
-            throw new ConflictException();
-        }
-
-        const result = await this.locationRepository.shareWith(user.id, location.id, session);
-
-        if (result === 0) {
-            throw new InternalServerErrorException();
-        }
-
-        return location;
     }
 
     private async getSolarTrackersInsightsHwApiRes(serialNumbers: string[]): Promise<SolarTrackersInsightsHwApiRes> {
@@ -181,10 +146,10 @@ export class LocationService {
         }
 
         const [stInsights, wsInsights] = await Promise.all([
-            this.getSolarTrackersInsightsHwApiRes(location.solarTrackers),
+            this.getSolarTrackersInsightsHwApiRes(location.solarTrackers.map((st) => st.serialNumber)),
             location.weatherStation
                 ? this.getWeatherStationInsightsHwApiRes(location.weatherStation)
-                : undefined,
+                : Promise.resolve(null),
         ]);
 
         return {
@@ -208,14 +173,12 @@ export class LocationService {
     }
 
     private async sendLocationUpdateNotification(currFcmToken: string, location: Location & Document): Promise<void> {
-        await location.populate('sharedWith');
-
         location.sharedWith.forEach((user) => {
             user.fcmTokens.forEach((fcmToken) => {
                 if (fcmToken === currFcmToken) {
                     return;
                 }
-                
+
                 this.firebaseService.sendPushNotification(fcmToken, {
                     notificationType: NotificationType.LocationUpdate,
                     body: {
@@ -231,8 +194,14 @@ export class LocationService {
     }
 
     async addWeatherStation(userId: string, currFcmToken: string, locationId: string, wsSerialNumber: string): Promise<void> {
-        const location = await this.checkIfUserIsOwner(userId, locationId);
-        await this.validateWSCanBeAdd(wsSerialNumber);
+        const [location, _] = await Promise.all([
+            this.checkIfUserIsOwner(userId, locationId),
+            this.validateWSCanBeAdd(wsSerialNumber)
+        ]);
+
+        if (location.weatherStation) {
+            throw new ConflictException();
+        }
 
         location.weatherStation = wsSerialNumber;
         await location.save();
@@ -256,11 +225,12 @@ export class LocationService {
     }
 
     async addSolarTracker(userId: string, currFcmToken: string, locationId: string, stSerialNumber: string): Promise<void> {
-        const location = await this.checkIfUserIsOwner(userId, locationId);
-        const capacity = await this.validateSTCanBeAdd(userId, stSerialNumber);
-        
-        location.solarTrackers.push(stSerialNumber);
-        location.capacity += capacity;
+        const [location, solarTracker] = await Promise.all([
+            this.checkIfUserIsOwner(userId, locationId),
+            this.validateSTCanBeAdd(userId, stSerialNumber)
+        ]);
+
+        location.solarTrackers.push(solarTracker);
         await location.save();
 
         this.sendLocationUpdateNotification(currFcmToken, location);
@@ -268,29 +238,23 @@ export class LocationService {
 
     async removeSolarTracker(userId: string, currFcmToken: string, locationId: string, stSerialNumber: string): Promise<void> {
         const location = await this.checkIfUserIsOwner(userId, locationId);
+        location.solarTrackers = location.solarTrackers.filter((st) => st.serialNumber !== stSerialNumber);
 
-        const index = location.solarTrackers.indexOf(stSerialNumber);
-
-        if (index === -1) {
-            throw new NotFoundException();
-        }
-
-        location.solarTrackers.splice(index, 1);
-        location.capacity -= 6; // TODO: change this to the real capacity
         await location.save();
 
         this.sendLocationUpdateNotification(currFcmToken, location);
     }
 
-    async remove(userId: string, currFcmToken: string, locationId: string, session: ClientSession): Promise<void> {
+    async remove(userId: string, currFcmToken: string, locationId: string, session: ClientSession): Promise<Location> {
         const location = await this.checkIfUserIsOwner(userId, locationId);
-
         const result = await this.locationRepository.deleteById(locationId, { session });
 
         if (result === 0) {
-            throw new InternalServerErrorException(); // TODO: check why I need this
+            throw new InternalServerErrorException();
         }
 
         this.sendLocationUpdateNotification(currFcmToken, location);
+
+        return location;
     }
 }

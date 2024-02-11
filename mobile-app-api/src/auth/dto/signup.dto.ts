@@ -1,4 +1,4 @@
-import { PickType } from '@nestjs/mapped-types';
+import { PickType } from '@nestjs/swagger';
 import { IsNotEmpty, IsString } from 'class-validator';
 import { User } from '../../user/schema';
 
@@ -7,7 +7,11 @@ export class SignUpReq extends PickType(User, [
     'email',
     'password',
 ]) {
+    readonly username: User['username'];
+    readonly email: User['email'];
+    readonly password: User['password'];
+
     @IsString()
     @IsNotEmpty()
-    fcmToken: string;
+    readonly fcmToken: string;
 }

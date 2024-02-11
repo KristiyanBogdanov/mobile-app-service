@@ -53,5 +53,3 @@ export class GetLocationInsightsRes {
     solarTrackers: SolarTrackerInsightsDto[];
     weatherStation: WeatherStationInsightsDto;
 }
-
-// TODO: add validation

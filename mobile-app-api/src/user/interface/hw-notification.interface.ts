@@ -1,6 +1,4 @@
 import { NotificationType } from '../../firebase/enum';
-import { NotificationStatus } from '../enum';
-
 export interface IHwNotification {
     id: string;
     notificationType: NotificationType;
@@ -10,5 +8,4 @@ export interface IHwNotification {
     message: string;
     advice: string;
     timestamp: Date;
-    status: NotificationStatus;
 }

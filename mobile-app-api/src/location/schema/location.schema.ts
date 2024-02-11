@@ -1,8 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Schema as MongooseSchema } from 'mongoose';
-import { Exclude, Expose } from 'class-transformer';
-import { ArrayMinSize, IsArray, IsNotEmpty, IsOptional, IsString, Length } from 'class-validator';
-import { ErrorCode } from '../../shared/exception';
+import { Exclude, Expose, Type } from 'class-transformer';
+import { ArrayMinSize, IsArray, IsNotEmpty, IsOptional, IsString, Length, ValidateNested } from 'class-validator';
 import { LOCATION_NAME_MAX_LENGTH, LOCATION_NAME_MIN_LENGTH } from '../../shared/constants';
 import { User } from '../../user/schema';
 import { ILocation } from '../interface';
@@ -18,32 +17,21 @@ export class Location implements ILocation {
     id: string;
 
     @Expose()
-    @Prop({
-        index: {
-            name: 'uuidIndex',
-            unique: true
-        },
-        required: true,
-    })
-    uuid: string;
-
-    @Expose()
     @IsString()
     @Length(LOCATION_NAME_MIN_LENGTH, LOCATION_NAME_MAX_LENGTH)
     @Prop({ required: true })
     name: string;
-
-    @Expose()
-    @Prop({ required: true })
-    capacity: number;
-
+    
     @Expose()
     @IsArray()
     @ArrayMinSize(1)
-    @IsString({ each: true })
-    @IsNotEmpty({ each: true })
-    @Prop({ required: true, min: 1 })
-    solarTrackers: string[];
+    @ValidateNested()
+    @Type(() => SolarTracker)
+    @Prop({
+        type: [SolarTracker],
+        required: true,
+    })
+    solarTrackers: SolarTracker[];
 
     @Expose()
     @IsOptional()
@@ -73,8 +61,10 @@ export class Location implements ILocation {
         required: true,
     })
     sharedWith: User[];
-}
 
-// TODO: try to add constructor with Partial<Location> as parameter, and remove plainToClass from location.service.ts
+    constructor(partial: Partial<Location>) {
+        Object.assign(this, partial);
+    }
+}
 
 export const LocationSchema = SchemaFactory.createForClass(Location);

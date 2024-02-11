@@ -1,10 +1,9 @@
 import { ConflictException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import { ClientSession } from 'mongoose';
+import { ClientSession, Document } from 'mongoose';
 import { plainToClass } from 'class-transformer';
-import { ErrorCode } from '../shared/exception';
-import { 
-    DEVICE_STATE_REPORT_NOTIFICATION_TITLE, INACTIVE_DEVICE_NOTIFICATION_TITLE, 
-    INVITATION_NOTIFICATION_TITLE, getInvitationNotificationMessage 
+import {
+    DEVICE_STATE_REPORT_NOTIFICATION_TITLE, INACTIVE_DEVICE_NOTIFICATION_TITLE,
+    INVITATION_NOTIFICATION_TITLE, getInvitationNotificationMessage
 } from '../shared/constants';
 import { AddLocationReq, LocationDto } from '../location/dto';
 import { LocationRepository } from '../location/repository';
@@ -13,37 +12,37 @@ import { FirebaseService } from '../firebase/firebase.service';
 import { NotificationType } from '../firebase/enum';
 import { UserRepository } from './repository';
 import { HwNotification, Invitation, User } from './schema';
-import { 
-    UserDto, SendHwNotificationReq, UpdateHwNotificationStatusReq, HwNotificationDto, 
-    InvitationDto, SendInvitationReq, RespondToInvitationReq 
+import {
+    UserDto, SendHwNotificationReq, HwNotificationDto,
+    InvitationDto, SendInvitationReq, RespondToInvitationReq
 } from './dto';
 import { Location } from '../location/schema';
 
 @Injectable()
 export class UserService {
     constructor(
-        private readonly repository: UserRepository,
+        private readonly userRepository: UserRepository,
         private readonly locationRepository: LocationRepository,
         private readonly locationService: LocationService,
         private readonly firebaseService: FirebaseService
     ) { }
 
     async create(user: User, session: ClientSession): Promise<User> {
-        const emailIsAlreadyUsed = await this.repository.findOne({ email: user.email });
+        const emailIsAlreadyUsed = await this.userRepository.findOne({ email: user.email });
 
         if (emailIsAlreadyUsed) {
             throw new ConflictException();
         }
 
-        return await this.repository.createInSession(user, session);
+        return await this.userRepository.createInSession(user, session);
     }
 
     async mapToUserDto(user: User): Promise<UserDto> {
         const userDto = plainToClass(UserDto, user);
-    
+
         userDto.locations = await Promise.all(
             user.locations.map(
-                (location) => this.locationService.mapToLocationDto(user.id, location as any)
+                async (location) => this.locationService.mapToLocationDto(user.id, location as (Location & Document))
             )
         );
 
@@ -54,7 +53,7 @@ export class UserService {
     }
 
     async fetchData(userId: string): Promise<UserDto> {
-        const user = await this.repository.findById(userId);
+        const user = await this.userRepository.findById(userId);
 
         if (!user) {
             throw new NotFoundException();
@@ -63,72 +62,78 @@ export class UserService {
         return this.mapToUserDto(user);
     }
 
-    private async addLocationToUser(user: User, location: Location, session?: ClientSession) {
-        const result = await this.repository.addLocation(user.id, location.id, session);
-
-        if (result === 0) {
-            throw new InternalServerErrorException(ErrorCode.FailedToAddLocation);
-        }
-
-        location.sharedWith.forEach((sharedWithUser) => {
-            sharedWithUser.fcmTokens.forEach((fcmToken) => {
-                this.firebaseService.sendPushNotification(
-                    fcmToken,
-                    {
-                        notificationType: NotificationType.LocationUpdate,
-                        body: {
-                            locationId: location.id
-                        }
-                    },
-                );
-            });
-        });
-
-    }
-
     async addNewLocation(userId: string, currFcmToken: string, locationData: AddLocationReq): Promise<LocationDto> {
-        const session = await this.repository.startSession();
+        const session = await this.userRepository.startSession();
         session.startTransaction();
 
         try {
-            const user = await this.repository.findById(userId);
+            const user = await this.userRepository.findById(userId, {}, { session });
 
             if (!user) {
                 throw new NotFoundException();
             }
 
             const newLocation = await this.locationService.addNew(user, locationData, session);
-            await this.addLocationToUser(user, newLocation, session);
+            const result = await this.userRepository.addLocation(user.id, newLocation.id, session);
+
+            if (result === 0) {
+                throw new InternalServerErrorException();
+            }
 
             await session.commitTransaction();
 
             user.fcmTokens.forEach((fcmToken) => {
-                if (fcmToken !== currFcmToken) {
-                    this.firebaseService.sendPushNotification(
-                        fcmToken,
-                        {
-                            notificationType: NotificationType.LocationUpdate,
-                            body: {
-                                locationId: newLocation.id
-                            }
-                        },
-                    );
+                if (fcmToken === currFcmToken) {
+                    return;
                 }
+
+                this.firebaseService.sendPushNotification(
+                    fcmToken,
+                    {
+                        notificationType: NotificationType.LocationUpdate,
+                        body: {
+                            locationId: newLocation.id
+                        }
+                    },
+                );
             });
 
-            return await this.locationService.mapToLocationDto(userId, newLocation as any);
+            return await this.locationService.mapToLocationDto(userId, newLocation as (Location & Document));
         } catch (error) {
             await session.abortTransaction();
             throw error;
         } finally {
-            session.endSession();
+            await session.endSession();
+        }
+    }
+
+    async removeLocation(userId: string, currFcmToken: string, locationId: string): Promise<void> {
+        const session = await this.userRepository.startSession();
+        session.startTransaction();
+
+        try {
+            const location = await this.locationService.remove(userId, currFcmToken, locationId, session);
+            const results = await Promise.all(
+                location.sharedWith.map((user) => this.userRepository.removeLocation(user.id, locationId, session))
+            );
+
+            if (results.some((result) => result === 0)) {
+                throw new InternalServerErrorException();
+            }
+
+            await session.commitTransaction();
+        } catch (error) {
+            await session.abortTransaction();
+            throw error;
+        } finally {
+            await session.endSession();
         }
     }
 
     async inviteUserToLocation(userId: string, invitationData: SendInvitationReq): Promise<void> {
         const [owner, invitedUser, location] = await Promise.all([
-            this.repository.findById(userId),
-            this.repository.findOne({ email: invitationData.invitedUserEmail }),
+            this.userRepository.findById(userId),
+            this.userRepository.findOne({ email: invitationData.invitedUserEmail }),
             this.locationRepository.findById(invitationData.locationId)
         ]);
 
@@ -140,12 +145,9 @@ export class UserService {
             throw new ForbiddenException();
         }
 
-        if (invitedUser.locations.includes(location.id)) {
+        if (invitedUser.locations.some((location) => location.id === invitationData.locationId)) {
             throw new ConflictException();
         }
-
-        console.log(location);
-        console.log(invitedUser);
 
         if (invitedUser.invitations.some((invitation) => invitation.locationId === location.id)) {
             return;
@@ -158,9 +160,7 @@ export class UserService {
             timestamp: new Date()
         });
 
-        console.log(invitedUser.id);
-
-        const result = await this.repository.addInvitation(invitedUser.id, invitation);
+        const result = await this.userRepository.addInvitation(invitedUser.id, invitation);
 
         if (result === 0) {
             throw new InternalServerErrorException();
@@ -184,33 +184,36 @@ export class UserService {
     }
 
     async respondToInvitation(userId: string, currFcmToken: String, invitationId: string, responseData: RespondToInvitationReq): Promise<void> {
-        const session = await this.repository.startSession();
+        const session = await this.userRepository.startSession();
         session.startTransaction();
 
-        console.log(responseData);
-        console.log(invitationId);
-
         try {
-            const [user, location] = await Promise.all([
-                this.repository.findById(userId, {}, { session }),
-                (await this.locationRepository.findById(responseData.locationId, {}, {session})).populate('sharedWith')
-            ]);
-    
-            if (!user || !location) {
+            const user = await this.userRepository.findById(userId, {}, { session });
+
+            if (!user) {
                 throw new NotFoundException();
             }
-    
-            const [removeInvitationRes, shareLocationRes] = await Promise.all([
-                this.repository.removeInvitation(userId, invitationId, session),
-                this.locationRepository.shareWith(userId, location.id, session)
-            ]);
 
-            if (removeInvitationRes === 0 || shareLocationRes === 0) {
-                throw new InternalServerErrorException();
+            const invitation = user.invitations.find((invitation) => invitation.id === invitationId);
+
+            if (!invitation) {
+                throw new NotFoundException();
             }
 
-            if (responseData.accepted) {
-                await this.addLocationToUser(user, location, session);
+            const location = await (await this.locationRepository.findById(invitation.locationId, {}, { session })).populate('sharedWith');
+
+            if (!location) {
+                throw new NotFoundException();
+            }
+
+            const [removeInvitationRes, shareLocationRes, addLocationRes] = await Promise.all([
+                this.userRepository.removeInvitation(userId, invitationId, session),
+                responseData.accepted ? this.locationRepository.shareWith(userId, location.id, session) : Promise.resolve(),
+                responseData.accepted ? this.userRepository.addLocation(userId, location.id, session) : Promise.resolve()
+            ]);
+
+            if (removeInvitationRes === 0 || shareLocationRes === 0 || addLocationRes === 0) {
+                throw new InternalServerErrorException();
             }
 
             await session.commitTransaction();
@@ -234,39 +237,16 @@ export class UserService {
             await session.abortTransaction();
             throw error;
         } finally {
-            session.endSession();
-        }        
-    }
-
-    async removeLocation(userId: string, currFcmToken: string, locationId: string): Promise<void> {
-        const session = await this.repository.startSession();
-        session.startTransaction();
-
-        try {
-            const [_, result] = await Promise.all([
-                this.locationService.remove(userId, currFcmToken, locationId, session),
-                this.repository.removeLocation(userId, locationId, session)
-            ]);
-
-            if (result === 0) {
-                throw new InternalServerErrorException();
-            }
-
-            await session.commitTransaction();
-        } catch (error) {
-            await session.abortTransaction();
-            throw error;
-        } finally {
-            session.endSession();
+            await session.endSession();
         }
     }
 
     private async sendHwNotification(notificationData: SendHwNotificationReq, notificationType: NotificationType, notificationTitle: string): Promise<void> {
-        const session = await this.repository.startSession();
+        const session = await this.userRepository.startSession();
         session.startTransaction();
 
         try {
-            const users = await this.repository.findUsersWithDevice(notificationData.serialNumber, session);
+            const users = await this.userRepository.findUsersWithDevice(notificationData.serialNumber, session);
 
             if (users.length === 0) {
                 await session.abortTransaction();
@@ -279,9 +259,7 @@ export class UserService {
             });
 
             const results = await Promise.all(
-                users.map(async (user) => {
-                    return await this.repository.addHwNotification(user.id, hwNotification, session);
-                })
+                users.map((user) => this.userRepository.addHwNotification(user.id, hwNotification, session))
             );
 
             if (results.some((result) => result === 0)) {
@@ -291,14 +269,13 @@ export class UserService {
             await session.commitTransaction();
 
             const fcmTokens = users.map((user) => user.fcmTokens).flat();
-            const uniqueTokens = [...new Set(fcmTokens)];
+            const uniqueTokens = [...new Set(fcmTokens)]; // TODO: try to remove this
 
             const hwNotificationDto = plainToClass(HwNotificationDto, hwNotification);
-            console.log(hwNotificationDto);
 
             uniqueTokens.forEach((fcmToken) => {
                 this.firebaseService.sendPushNotification(
-                    fcmToken, 
+                    fcmToken,
                     {
                         notificationType: notificationType,
                         body: hwNotificationDto
@@ -313,7 +290,7 @@ export class UserService {
             await session.abortTransaction();
             throw error;
         } finally {
-            session.endSession();
+            await session.endSession();
         }
     }
 
@@ -325,19 +302,11 @@ export class UserService {
         await this.sendHwNotification(notificationData, NotificationType.DeviceStateReport, DEVICE_STATE_REPORT_NOTIFICATION_TITLE);
     }
 
-    async updateHwNotificationStatus(userId: string, notificationId: string, updateData: UpdateHwNotificationStatusReq): Promise<void> {
-        const result = await this.repository.updateHwNotificationStatus(userId, notificationId, updateData.status);
-
-        if (result === 0) {
-            throw new InternalServerErrorException(ErrorCode.FailedToUpdateHwNotification);
-        }
-    }
-
     async deleteHwNotification(userId: string, notificationId: string): Promise<void> {
-        const result = await this.repository.deleteHwNotification(userId, notificationId);
+        const result = await this.userRepository.deleteHwNotification(userId, notificationId);
 
         if (result === 0) {
-            throw new InternalServerErrorException(ErrorCode.FailedToDeleteHwNotification);
+            throw new InternalServerErrorException();
         }
     }
 }
