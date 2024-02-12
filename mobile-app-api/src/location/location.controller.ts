@@ -24,14 +24,14 @@ export class LocationController {
         return this.locationService.getLocation(payload.id, locationId);
     }
     
-    @Get('/validate/st-serial-number/:serialNumber')
+    @Get('/validate/solar-tracker/:serialNumber')
     @UseFilters(new AxiosErrorFilter())
     async validateSTSerialNumber(@Req() request: Request, @Param('serialNumber') serialNumber: string): Promise<ValidateSTSerialNumberRes> {
         const payload = request.user as JwtPayload;
         return await this.locationService.validateSTSerialNumber(payload.id, serialNumber);
     }
 
-    @Get('/validate/ws-serial-number/:serialNumber')
+    @Get('/validate/weather-station/:serialNumber')
     @UseFilters(new AxiosErrorFilter())
     async validateWSSerialNumber(@Param('serialNumber') serialNumber: string): Promise<ValidateWSSerialNumberRes> {
         return await this.locationService.validateWSSerialNumber(serialNumber);

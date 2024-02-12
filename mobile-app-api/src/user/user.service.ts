@@ -82,21 +82,7 @@ export class UserService {
 
             await session.commitTransaction();
 
-            user.fcmTokens.forEach((fcmToken) => {
-                if (fcmToken === currFcmToken) {
-                    return;
-                }
-
-                this.firebaseService.sendPushNotification(
-                    fcmToken,
-                    {
-                        notificationType: NotificationType.LocationUpdate,
-                        body: {
-                            locationId: newLocation.id
-                        }
-                    },
-                );
-            });
+            this.locationService.sendLocationUpdateNotification(currFcmToken, newLocation);
 
             return await this.locationService.mapToLocationDto(userId, newLocation as (Location & Document));
         } catch (error) {
@@ -183,7 +169,7 @@ export class UserService {
         });
     }
 
-    async respondToInvitation(userId: string, currFcmToken: String, invitationId: string, responseData: RespondToInvitationReq): Promise<void> {
+    async respondToInvitation(userId: string, currFcmToken: string, invitationId: string, responseData: RespondToInvitationReq): Promise<void> {
         const session = await this.userRepository.startSession();
         session.startTransaction();
 
@@ -206,13 +192,22 @@ export class UserService {
                 throw new NotFoundException();
             }
 
-            const [removeInvitationRes, shareLocationRes, addLocationRes] = await Promise.all([
-                this.userRepository.removeInvitation(userId, invitationId, session),
-                responseData.accepted ? this.locationRepository.shareWith(userId, location.id, session) : Promise.resolve(),
+            if (responseData.accepted) {
+                location.sharedWith.push(user);
+            }
+
+            const removeInvitationRes = await this.userRepository.removeInvitation(userId, invitationId, session);
+
+            if (removeInvitationRes === 0) {
+                throw new InternalServerErrorException();
+            }
+
+            const [_, addLocationRes] = await Promise.all([
+                responseData.accepted ? location.save({ session }) : Promise.resolve(),
                 responseData.accepted ? this.userRepository.addLocation(userId, location.id, session) : Promise.resolve()
             ]);
 
-            if (removeInvitationRes === 0 || shareLocationRes === 0 || addLocationRes === 0) {
+            if (addLocationRes === 0) {
                 throw new InternalServerErrorException();
             }
 
@@ -226,13 +221,15 @@ export class UserService {
                 this.firebaseService.sendPushNotification(
                     fcmToken,
                     {
-                        notificationType: NotificationType.InvititationsUpdate,
+                        notificationType: NotificationType.InvititationUpdate,
                         body: {
                             invitationId: invitationId
                         }
                     }
                 );
             });
+
+            this.locationService.sendLocationUpdateNotification(currFcmToken, location, false);
         } catch (error) {
             await session.abortTransaction();
             throw error;

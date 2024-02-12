@@ -141,10 +141,12 @@ export class AuthService {
         session.startTransaction();
 
         try {
-            await Promise.all([
-                this.updateRefreshToken(userId, null, session),
-                this.userRepository.clearFcmTokens(userId, session),
-            ]);
+            await this.updateRefreshToken(userId, null, session);
+            const result = await this.userRepository.clearFcmTokens(userId, session);
+
+            if (result === 0) {
+                throw new InternalServerErrorException();
+            }
 
             await session.commitTransaction();
         } catch (error) {

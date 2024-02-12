@@ -172,10 +172,10 @@ export class LocationService {
         return location;
     }
 
-    private async sendLocationUpdateNotification(currFcmToken: string, location: Location & Document): Promise<void> {
+    async sendLocationUpdateNotification(currFcmToken: string, location: Location, skipCurrFcmToken = true): Promise<void> {
         location.sharedWith.forEach((user) => {
             user.fcmTokens.forEach((fcmToken) => {
-                if (fcmToken === currFcmToken) {
+                if (fcmToken === currFcmToken && skipCurrFcmToken) {
                     return;
                 }
 
@@ -189,8 +189,9 @@ export class LocationService {
         });
     }
 
-    async getWeatherStationInsights(wsSerialNumber: string): Promise<WeatherStationInsightsDto> {
-        return await this.getWeatherStationInsightsHwApiRes(wsSerialNumber);
+    async getWeatherStationInsights(locationId: string): Promise<WeatherStationInsightsDto> {
+        const location = await this.locationRepository.findById(locationId);
+        return await this.getWeatherStationInsightsHwApiRes(location.weatherStation);
     }
 
     async addWeatherStation(userId: string, currFcmToken: string, locationId: string, wsSerialNumber: string): Promise<void> {
