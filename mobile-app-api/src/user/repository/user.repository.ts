@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { ClientSession, Document, Model } from 'mongoose';
 import { EntityRepository } from '../../database';
 import { HwNotification, Invitation, User } from '../schema';
+
 @Injectable()
 export class UserRepository extends EntityRepository<User> {
     constructor(@InjectModel(User.name) userModel: Model<User>) {
