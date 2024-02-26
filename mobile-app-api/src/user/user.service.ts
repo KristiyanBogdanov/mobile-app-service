@@ -46,7 +46,7 @@ export class UserService {
             )
         );
 
-        userDto.hwNotifications = user.hwNotifications.map((notification) => plainToClass(HwNotificationDto, notification));
+        userDto.hwNotifications = user.hwNotifications.map((notification) => plainToClass(HwNotificationDto, notification)).reverse();
         userDto.invitations = user.invitations.map((invitation) => plainToClass(InvitationDto, invitation));
 
         return userDto;
@@ -265,23 +265,22 @@ export class UserService {
 
             await session.commitTransaction();
 
-            const fcmTokens = users.map((user) => user.fcmTokens).flat();
-            const uniqueTokens = [...new Set(fcmTokens)]; // TODO: try to remove this
-
             const hwNotificationDto = plainToClass(HwNotificationDto, hwNotification);
 
-            uniqueTokens.forEach((fcmToken) => {
-                this.firebaseService.sendPushNotification(
-                    fcmToken,
-                    {
-                        notificationType: notificationType,
-                        body: hwNotificationDto
-                    },
-                    {
-                        title: notificationTitle,
-                        body: notificationData.message
-                    }
-                );
+            users.forEach((user) => {
+                user.fcmTokens.forEach((fcmToken) => {
+                    this.firebaseService.sendPushNotification(
+                        fcmToken,
+                        {
+                            notificationType: notificationType,
+                            body: hwNotificationDto
+                        },
+                        {
+                            title: notificationTitle,
+                            body: notificationData.message
+                        }
+                    );
+                });
             });
         } catch (error) {
             await session.abortTransaction();
@@ -299,11 +298,36 @@ export class UserService {
         await this.sendHwNotification(notificationData, NotificationType.DeviceStateReport, DEVICE_STATE_REPORT_NOTIFICATION_TITLE);
     }
 
-    async deleteHwNotification(userId: string, notificationId: string): Promise<void> {
-        const result = await this.userRepository.deleteHwNotification(userId, notificationId);
+    async deleteHwNotification(userId: string, currFcmToken: string, notificationId: string): Promise<void> {
+        const user = await this.userRepository.findById(userId);
 
-        if (result === 0) {
-            throw new InternalServerErrorException();
+        if (!user) {
+            throw new NotFoundException();
         }
+
+        const filteredHwNotifications = user.hwNotifications.filter((notification) => notification.id !== notificationId);
+
+        if (filteredHwNotifications.length === user.hwNotifications.length) {
+            throw new NotFoundException();
+        }
+
+        user.hwNotifications = filteredHwNotifications;
+        await user.save();
+
+        user.fcmTokens.forEach((fcmToken) => {
+            if (fcmToken == currFcmToken) {
+                return;
+            }
+
+            this.firebaseService.sendPushNotification(
+                fcmToken,
+                {
+                    notificationType: NotificationType.HwNotificationUpdate,
+                    body: {
+                        hwNotificationId: notificationId
+                    }
+                }
+            );
+        });
     }
 }

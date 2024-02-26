@@ -61,6 +61,6 @@ export class UserController {
     @HttpCode(HttpStatus.NO_CONTENT)
     async deleteHwNotification(@Req() request: Request, @Param('hwNotificationId', ValidateMongoId) hwNotificationId: string): Promise<void> {
         const payload = request.user as JwtPayload;
-        return await this.userService.deleteHwNotification(payload.id, hwNotificationId);
+        return await this.userService.deleteHwNotification(payload.id, payload.fcmToken, hwNotificationId);
     }
 }

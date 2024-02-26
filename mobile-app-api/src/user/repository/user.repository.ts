@@ -44,10 +44,10 @@ export class UserRepository extends EntityRepository<User> {
         );
     }
 
-    async clearFcmTokens(userId: string, session: ClientSession): Promise<number> {
+    async removeFcmToken(userId: string, fcmToken: string, session: ClientSession): Promise<number> {
         return await this.updateOne(
             { _id: userId },
-            { $set: { fcmTokens : [] } },
+            { $pull: { fcmTokens: fcmToken } },
             { session }
         );
     }

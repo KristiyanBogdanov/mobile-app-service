@@ -26,9 +26,6 @@ export class MarketplaceService {
         return {
             tileMinLength: PUBLICATION_TITLE_MIN_LENGTH,
             titleMaxLength: PUBLICATION_TITLE_MAX_LENGTH,
-            productConditionOptions: Object.values(ProductCondition),
-            productCategories: Object.values(ProductCategory),
-            serviceCategories: Object.values(ServiceCategory)
         }
     }
 
@@ -118,8 +115,8 @@ export class MarketplaceService {
             throw new NotFoundException();
         }
 
-        const productCategories = filters.productCategories || Object.values(ProductCategory);
-        const serviceCategories = filters.serviceCategories || Object.values(ServiceCategory);
+        const productCategories = filters.productCategories || [];
+        const serviceCategories = filters.serviceCategories || [];
 
         const publications = await this.publicationRepository.findPublications(pagination, { productCategories, serviceCategories });
 
