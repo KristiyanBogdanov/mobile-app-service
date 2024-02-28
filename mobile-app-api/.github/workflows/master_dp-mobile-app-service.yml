@@ -65,4 +65,3 @@ jobs:
           app-name: 'dp-mobile-app-service'
           slot-name: 'Production'
           package: .
-          
