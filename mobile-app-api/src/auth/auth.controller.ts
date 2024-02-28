@@ -32,7 +32,7 @@ export class AuthController {
     @Get('/signout')
     async signout(@Req() request: Request): Promise<void> {
         const payload = request.user as JwtPayload;
-        return await this.authService.signout(payload.id);
+        return await this.authService.signout(payload.id, payload.fcmToken);
     }
 
     @UseGuards(RefreshTokenGuard)

@@ -20,3 +20,8 @@ export const INVITATION_NOTIFICATION_TITLE = 'Invitation to location';
 export function getInvitationNotificationMessage(locationName: string, ownerName: string): string {
     return `${ownerName} has invited you to join the location ${locationName}`;
 }
+
+export const PUBLICATION_TITLE_MIN_LENGTH = 3;
+export const PUBLICATION_TITLE_MAX_LENGTH = 50;
+
+export const MARKETPLACE_PAGINATION_LIMIT = 20;

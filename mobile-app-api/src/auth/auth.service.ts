@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -51,13 +51,8 @@ export class AuthService {
         return { accessToken, refreshToken };
     }
 
-    private async updateRefreshToken(userId: string, refreshToken?: string, session?: ClientSession): Promise<void> {
-        let hashedRefreshToken = null;
-
-        if (refreshToken) {
-            hashedRefreshToken = await this.hashData(refreshToken);
-        }
-
+    private async updateRefreshToken(userId: string, refreshToken: string, session?: ClientSession): Promise<void> {
+        const hashedRefreshToken = await this.hashData(refreshToken);
         const result = await this.userRepository.updateRefreshToken(userId, hashedRefreshToken, session);
 
         if (result === 0) {
@@ -110,22 +105,10 @@ export class AuthService {
 
         const tokens = await this.generateTokens({ id: user.id, fcmToken: signinData.fcmToken });
 
-        const session = await this.userRepository.startSession();
-        session.startTransaction();
+        user.refreshToken = await this.hashData(tokens.refreshToken);
+        user.fcmTokens = Array.from(new Set([...user.fcmTokens, signinData.fcmToken]));
 
-        try {
-            await Promise.all([
-                this.updateRefreshToken(user.id, tokens.refreshToken, session),
-                this.userRepository.updateFcmTokens(user.id, signinData.fcmToken, session),
-            ]);
-
-            await session.commitTransaction();
-        } catch (error) {
-            await session.abortTransaction();
-            throw error;
-        } finally {
-            await session.endSession();
-        }
+        await user.save();
 
         const userDto = await this.userService.mapToUserDto(user);
 
@@ -136,25 +119,20 @@ export class AuthService {
         });
     }
 
-    async signout(userId: string): Promise<void> {
-        const session = await this.userRepository.startSession();
-        session.startTransaction();
+    async signout(userId: string, fcmToken: string): Promise<void> {
+        const user = await this.userRepository.findById(userId);
 
-        try {
-            await this.updateRefreshToken(userId, null, session);
-            const result = await this.userRepository.clearFcmTokens(userId, session);
-
-            if (result === 0) {
-                throw new InternalServerErrorException();
-            }
-
-            await session.commitTransaction();
-        } catch (error) {
-            await session.abortTransaction();
-            throw error;
-        } finally {
-            await session.endSession();
+        if (!user) {
+            throw new NotFoundException();
         }
+
+        if (user.fcmTokens.length === 1) {
+            user.refreshToken = null;
+        }
+
+        user.fcmTokens = user.fcmTokens.filter(token => token !== fcmToken);
+
+        await user.save();
     }
 
     async refreshTokens(userId: string, fcmToken: string, refreshToken: string): Promise<RefreshTokensRes> {
@@ -170,7 +148,7 @@ export class AuthService {
             throw new ForbiddenException();
         }
 
-        const tokens = await this.generateTokens({ id: user.id,  fcmToken });
+        const tokens = await this.generateTokens({ id: user.id, fcmToken });
         await this.updateRefreshToken(user.id, tokens.refreshToken);
 
         return tokens;

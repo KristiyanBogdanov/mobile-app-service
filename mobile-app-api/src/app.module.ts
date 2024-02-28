@@ -7,6 +7,8 @@ import { AuthModule } from './auth/auth.module';
 import { AccessTokenGuard } from './shared/guard';
 import { LocationModule } from './location/location.module';
 import { FirebaseModule } from './firebase/firebase.module';
+import { AzureModule } from './azure/azure.module';
+import { MarketplaceModule } from './marketplace/marketplace.module';
 
 @Module({
     imports: [
@@ -29,7 +31,9 @@ import { FirebaseModule } from './firebase/firebase.module';
         AuthModule,
         UserModule,
         LocationModule,
-        FirebaseModule
+        FirebaseModule,
+        AzureModule,
+        MarketplaceModule
     ],
     providers: [
         {

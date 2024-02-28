@@ -213,10 +213,12 @@ export class LocationService {
     async removeWeatherStation(userId: string, currFcmToken: string, locationId: string): Promise<void> {
         const location = await this.checkIfUserIsOwner(userId, locationId);
 
-        location.weatherStation = null;
-        await location.save();
-
-        this.sendLocationUpdateNotification(currFcmToken, location);
+        if (location.weatherStation) {
+            location.weatherStation = null;
+            await location.save();
+    
+            this.sendLocationUpdateNotification(currFcmToken, location);
+        }
     }
 
     async getSolarTrackersInsights(locationId: string, stSerialNumber: string): Promise<SolarTrackerInsightsDto> {
@@ -239,8 +241,13 @@ export class LocationService {
 
     async removeSolarTracker(userId: string, currFcmToken: string, locationId: string, stSerialNumber: string): Promise<void> {
         const location = await this.checkIfUserIsOwner(userId, locationId);
-        location.solarTrackers = location.solarTrackers.filter((st) => st.serialNumber !== stSerialNumber);
+        const filteredSolarTrackers = location.solarTrackers.filter((st) => st.serialNumber !== stSerialNumber);
 
+        if (filteredSolarTrackers.length === location.solarTrackers.length) {
+            throw new NotFoundException();
+        }
+
+        location.solarTrackers = filteredSolarTrackers;
         await location.save();
 
         this.sendLocationUpdateNotification(currFcmToken, location);

@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { ClientSession, Document, Model } from 'mongoose';
 import { EntityRepository } from '../../database';
 import { HwNotification, Invitation, User } from '../schema';
+
 @Injectable()
 export class UserRepository extends EntityRepository<User> {
     constructor(@InjectModel(User.name) userModel: Model<User>) {
@@ -39,14 +40,6 @@ export class UserRepository extends EntityRepository<User> {
         return await this.updateOne(
             { _id: userId },
             { $addToSet: { fcmTokens: fcmToken } },
-            { session }
-        );
-    }
-
-    async clearFcmTokens(userId: string, session: ClientSession): Promise<number> {
-        return await this.updateOne(
-            { _id: userId },
-            { $set: { fcmTokens : [] } },
             { session }
         );
     }
