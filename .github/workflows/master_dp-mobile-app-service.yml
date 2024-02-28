@@ -22,9 +22,11 @@ jobs:
           node-version: '20.x'
 
       - name: yarn install
+        working-directory: ./mobile-app-api
         run: yarn install
 
       - name: Zip artifact for deployment
+        working-directory: ./mobile-app-api
         run: zip release.zip ./* -r
 
       - name: Upload artifact for deployment job
