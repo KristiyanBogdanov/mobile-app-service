@@ -44,14 +44,6 @@ export class UserRepository extends EntityRepository<User> {
         );
     }
 
-    async removeFcmToken(userId: string, fcmToken: string, session: ClientSession): Promise<number> {
-        return await this.updateOne(
-            { _id: userId },
-            { $pull: { fcmTokens: fcmToken } },
-            { session }
-        );
-    }
-
     async addLocation(userId: string, locationId: string, session: ClientSession): Promise<number> {
         return await this.updateOne(
             { _id: userId },

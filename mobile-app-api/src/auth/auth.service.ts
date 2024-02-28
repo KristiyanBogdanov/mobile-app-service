@@ -105,14 +105,10 @@ export class AuthService {
 
         const tokens = await this.generateTokens({ id: user.id, fcmToken: signinData.fcmToken });
 
-        const session = await this.userRepository.startSession();
+        user.refreshToken = await this.hashData(tokens.refreshToken);
+        user.fcmTokens = Array.from(new Set([...user.fcmTokens, signinData.fcmToken]));
 
-        await session.withTransaction(() => {
-            return Promise.all([
-                this.updateRefreshToken(user.id, tokens.refreshToken, session),
-                this.userRepository.updateFcmTokens(user.id, signinData.fcmToken, session),
-            ]);
-        });
+        await user.save();
 
         const userDto = await this.userService.mapToUserDto(user);
 
