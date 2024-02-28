@@ -26,8 +26,7 @@ jobs:
         run: yarn install
 
       - name: Zip artifact for deployment
-        working-directory: ./mobile-app-api
-        run: zip release.zip ./* -r
+        run: zip release.zip ./mobile-app-api -r
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v3
