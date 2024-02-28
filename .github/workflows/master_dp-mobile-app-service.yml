@@ -22,7 +22,7 @@ jobs:
           node-version: '20.x'
 
       - name: yarn install, build, and test
-      - working-directory: ./mobile-app-api
+        working-directory: ./mobile-app-api
         run: |
           yarn install
           yarn run build --if-present
