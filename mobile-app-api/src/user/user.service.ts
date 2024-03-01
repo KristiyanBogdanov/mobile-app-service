@@ -265,22 +265,23 @@ export class UserService {
 
             await session.commitTransaction();
 
+            const fcmTokens = users.map((user) => user.fcmTokens).flat();
+            const uniqueTokens = [...new Set(fcmTokens)];
+
             const hwNotificationDto = plainToClass(HwNotificationDto, hwNotification);
 
-            users.forEach((user) => {
-                user.fcmTokens.forEach((fcmToken) => {
-                    this.firebaseService.sendPushNotification(
-                        fcmToken,
-                        {
-                            notificationType: notificationType,
-                            body: hwNotificationDto
-                        },
-                        {
-                            title: notificationTitle,
-                            body: notificationData.message
-                        }
-                    );
-                });
+            uniqueTokens.forEach((fcmToken) => {
+                this.firebaseService.sendPushNotification(
+                    fcmToken,
+                    {
+                        notificationType: notificationType,
+                        body: hwNotificationDto
+                    },
+                    {
+                        title: notificationTitle,
+                        body: notificationData.message
+                    }
+                );
             });
         } catch (error) {
             await session.abortTransaction();

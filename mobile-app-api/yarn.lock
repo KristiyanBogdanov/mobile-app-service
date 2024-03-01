@@ -555,6 +555,17 @@
   dependencies:
     tslib "^2.1.0"
 
+"@flydotio/dockerfile@^0.5.2":
+  version "0.5.2"
+  resolved "https://registry.yarnpkg.com/@flydotio/dockerfile/-/dockerfile-0.5.2.tgz#5f97da9a4e5d6775b1d63b3d6d32e9e0538d5af8"
+  integrity sha512-2IQ32c6Eeag1gUD35wNLfdJw7CK1HanwESQKBkHdVjsT1eakMFgP/9QJ7a88QkfPBmzQFU2yNci/bxQZBpAucw==
+  dependencies:
+    chalk "^5.3.0"
+    diff "^5.1.0"
+    ejs "^3.1.9"
+    shell-quote "^1.8.1"
+    yargs "^17.7.2"
+
 "@google-cloud/firestore@^7.1.0":
   version "7.2.0"
   resolved "https://registry.yarnpkg.com/@google-cloud/firestore/-/firestore-7.2.0.tgz#73acaf48057dd01863dac7d68d8f3f2832543ece"
