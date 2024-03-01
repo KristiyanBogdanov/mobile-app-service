@@ -19,4 +19,4 @@ jobs:
 
       - name: Deploy
         working-directory: ./mobile-app-api
-        run: flyctl deploy
+        run: fly deploy
