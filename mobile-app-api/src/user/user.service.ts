@@ -238,6 +238,27 @@ export class UserService {
         }
     }
 
+    async removeUserFromLocation(ownerId: string, currFcmToken: string, locationId: string, userId: string): Promise<void> {
+        this.locationService.removeSharedUser(ownerId, currFcmToken, locationId, userId);
+
+        const user = await this.userRepository.findById(userId);
+        user.locations = user.locations.filter((location) => location.id !== locationId);
+
+        await user.save();
+
+        user.fcmTokens.forEach((fcmToken) => {
+            this.firebaseService.sendPushNotification(
+                fcmToken,
+                {
+                    notificationType: NotificationType.LocationUpdate,
+                    body: {
+                        locationId: locationId
+                    }
+                }
+            );
+        });
+    }
+
     private async sendHwNotification(notificationData: SendHwNotificationReq, notificationType: NotificationType, notificationTitle: string): Promise<void> {
         const session = await this.userRepository.startSession();
         session.startTransaction();

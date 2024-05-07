@@ -43,7 +43,12 @@ export class UserController {
         return await this.userService.respondToInvitation(payload.id, payload.fcmToken, invitationId, responseData);
     }
 
-    // TODO: add remove user from location
+    @Delete('/locations/:locationId/users/:userId')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async removeUserFromLocation(@Req() request: Request, @Param('locationId', ValidateMongoId) locationId: string, @Param('userId', ValidateMongoId) userId: string): Promise<void> {
+        const payload = request.user as JwtPayload;
+        return await this.userService.removeUserFromLocation(payload.id, payload.fcmToken, locationId, userId);
+    }
 
     @AuthNotRequired()
     @Post('/hw-notifications/inactive-devices')
