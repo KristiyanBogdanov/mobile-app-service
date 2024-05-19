@@ -54,6 +54,10 @@ export class LocationService {
             throw new NotFoundException();
         }
 
+        if (!location.sharedWith.some((user) => user.id === userId)) {
+            throw new ForbiddenException();
+        }
+
         return await this.mapToLocationDto(userId, location);
     }
 
@@ -248,6 +252,20 @@ export class LocationService {
         }
 
         location.solarTrackers = filteredSolarTrackers;
+        await location.save();
+
+        this.sendLocationUpdateNotification(currFcmToken, location);
+    }
+
+    async removeSharedUser(ownerId: string, currFcmToken: string, locationId: string, userId: string): Promise<void> {
+        const location = await this.checkIfUserIsOwner(ownerId, locationId);
+        const user = location.sharedWith.find((user) => user.id === userId);
+
+        if (!user) {
+            throw new NotFoundException();
+        }
+
+        location.sharedWith = location.sharedWith.filter((user) => user.id !== userId);
         await location.save();
 
         this.sendLocationUpdateNotification(currFcmToken, location);

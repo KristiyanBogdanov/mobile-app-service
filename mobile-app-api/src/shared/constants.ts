@@ -25,3 +25,6 @@ export const PUBLICATION_TITLE_MIN_LENGTH = 3;
 export const PUBLICATION_TITLE_MAX_LENGTH = 50;
 
 export const MARKETPLACE_PAGINATION_LIMIT = 20;
+
+export const PUBLICATIONS_FETCH_CACHE_TTL = 60 * 60; // seconds
+export const PUBLICATIONS_FETCH_CACHE_PREFIX = 'publicationsFetch';
