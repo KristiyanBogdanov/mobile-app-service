@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { CacheModule, CacheModuleAsyncOptions } from '@nestjs/cache-manager';
+import * as redisStore from 'cache-manager-redis-store';
 import { LoggerModule } from 'nestjs-pino';
 import { DatabaseModule } from './database/database.module';
 import { UserModule } from './user/user.module';
@@ -33,7 +35,19 @@ import { MarketplaceModule } from './marketplace/marketplace.module';
         LocationModule,
         FirebaseModule,
         AzureModule,
-        MarketplaceModule
+        MarketplaceModule,
+        CacheModule.registerAsync(<CacheModuleAsyncOptions>{
+            isGlobal: true,
+            imports: [ConfigModule],
+            useFactory: async (configService: ConfigService) => ({
+                store: await redisStore.redisStore(
+                    {
+                        url: configService.get<string>('REDIS_URL')
+                    }
+                )
+            }),
+            inject: [ConfigService],
+        }),
     ],
     providers: [
         {

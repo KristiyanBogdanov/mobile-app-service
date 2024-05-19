@@ -1,6 +1,8 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Req, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
+import { createHash } from 'crypto';
+import { PUBLICATIONS_FETCH_CACHE_PREFIX } from '../shared/constants';
 import { JwtPayload } from '../auth/type';
 import { MarketplaceService } from './marketplace.service';
 import { PostProductReq, GetPublicationLimitsRes, ProductDto, PostServiceReq, ServiceDto, GetPublicationsReqFilters, GetPublicationsRes } from './dto';
@@ -31,8 +33,9 @@ export class MarketplaceController {
 
     @Get('/')
     async getPublications(@Req() request: Request, @PaginationParams() paginationParams: Pagination, @Body() filters: GetPublicationsReqFilters): Promise<GetPublicationsRes> {
+        const cacheKey = PUBLICATIONS_FETCH_CACHE_PREFIX + createHash('sha256').update(request['originalUrl'] + JSON.stringify(request.body)).digest('hex');
         const payload = request.user as JwtPayload;
-        return await this.marketplaceService.getPublications(payload.id, paginationParams, filters);
+        return await this.marketplaceService.getPublications(payload.id, paginationParams, filters, cacheKey);
     }
 
     @Delete('/:publicationId')

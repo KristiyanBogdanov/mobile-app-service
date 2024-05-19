@@ -1,12 +1,15 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
+import { RedisStore } from 'cache-manager-redis-store';
 import { plainToClass } from 'class-transformer';
 import { Document } from 'mongoose';
-import { PUBLICATION_TITLE_MAX_LENGTH, PUBLICATION_TITLE_MIN_LENGTH } from '../shared/constants';
+import { PUBLICATION_TITLE_MAX_LENGTH, PUBLICATION_TITLE_MIN_LENGTH, PUBLICATIONS_FETCH_CACHE_PREFIX, PUBLICATIONS_FETCH_CACHE_TTL } from '../shared/constants';
 import { UserRepository } from '../user/repository';
 import { User } from '../user/schema';
 import { BriefUserInfo } from '../user/dto';
 import { AzureService } from '../azure/azure.service';
-import { ProductCategory, ProductCondition, PublicationType, ServiceCategory } from './enum';
+import { PublicationType } from './enum';
 import { PostProductReq, GetPublicationLimitsRes, ProductDto, PostServiceReq, ServiceDto, GetPublicationsReqFilters, GetPublicationsRes, PublicationDto } from './dto';
 import { Product, Publication, Service } from './schema';
 import { ProductReposiotry, PublicationRepository, ServiceRepository } from './repository';
@@ -20,6 +23,7 @@ export class MarketplaceService {
         private readonly publicationRepository: PublicationRepository,
         private readonly userRepository: UserRepository,
         private readonly azureService: AzureService,
+        @Inject(CACHE_MANAGER) private readonly cacheService: Cache
     ) { }
 
     getPublicationLimits(): GetPublicationLimitsRes {
@@ -45,8 +49,10 @@ export class MarketplaceService {
         return serviceDto;
     }
 
-    async mapToPublicationDto(userId: string, publication: Publication & Document): Promise<PublicationDto> {
-        await publication.populate('publisher');
+    async mapToPublicationDto(userId: string, publication: Publication & Document, populate = true): Promise<PublicationDto> {
+        if (populate) {
+            await publication.populate('publisher');
+        }
 
         return new PublicationDto(
             publication.type,
@@ -67,10 +73,11 @@ export class MarketplaceService {
             throw new NotFoundException();
         }
 
-        const imagesUrls = await Promise.all(
-            images.map(image => this.azureService.uploadFile('fileupload', image))
-        );
-
+        const [imagesUrls] = await Promise.all([
+            Promise.all(images.map(image => this.azureService.uploadFile('fileupload', image))),
+            this.deleteCachedPublications()
+        ]);
+        
         const product = new Product({
             ...productData,
             images: imagesUrls,
@@ -93,9 +100,10 @@ export class MarketplaceService {
             throw new NotFoundException();
         }
 
-        const imagesUrls = await Promise.all(
-            images.map(image => this.azureService.uploadFile('fileupload', image))
-        );
+        const [imagesUrls] = await Promise.all([
+            Promise.all(images.map(image => this.azureService.uploadFile('fileupload', image))),
+            this.deleteCachedPublications()
+        ]);
 
         const service = new Service({
             ...serviceData,
@@ -108,21 +116,38 @@ export class MarketplaceService {
         return this.mapToServiceDto(userId, savedService, user);
     }
 
-    async getPublications(userId: string, pagination: Pagination, filters: GetPublicationsReqFilters): Promise<GetPublicationsRes> {
+    async getPublications(userId: string, pagination: Pagination, filters: GetPublicationsReqFilters, cacheKey: string): Promise<GetPublicationsRes> {    
         const user = await this.userRepository.findById(userId);
 
         if (!user) {
             throw new NotFoundException();
         }
 
-        const productCategories = filters.productCategories || [];
-        const serviceCategories = filters.serviceCategories || [];
+        const cacheStore = this.getCacheStore();
+        let publications = await cacheStore.get(cacheKey, null, null);
 
-        const publications = await this.publicationRepository.findPublications(pagination, { productCategories, serviceCategories });
+        if (!publications) {
+            const productCategories = filters.productCategories || [];
+            const serviceCategories = filters.serviceCategories || [];
+
+            publications = await this.publicationRepository.findPublications(pagination, { productCategories, serviceCategories });
+            await Promise.all(
+                publications.map(async publication => {
+                    return publication.populate('publisher');
+                })
+            );
+
+            await cacheStore.set(
+                cacheKey, 
+                publications.map(publication => publication.toObject()),
+                { ttl: PUBLICATIONS_FETCH_CACHE_TTL }, 
+                null
+            );
+        }
 
         const publicationsDto = await Promise.all(
             publications.map(async publication => {
-                return this.mapToPublicationDto(userId, publication);
+                return this.mapToPublicationDto(userId, publication, false);
             })
         )
 
@@ -140,10 +165,23 @@ export class MarketplaceService {
             throw new ForbiddenException();
         }
 
-        await this.publicationRepository.deleteById(publicationId);
+        await Promise.all([
+            this.deleteCachedPublications(),
+            this.publicationRepository.deleteById(publicationId)
+        ]);
 
         publication.images.forEach(async imageUrl => {
             this.azureService.deleteFile('fileupload', imageUrl);
         });
+    }
+
+    private getCacheStore(): RedisStore {
+        return this.cacheService.store as unknown as RedisStore;
+    }
+
+    private async deleteCachedPublications() {
+        const cacheStore = this.getCacheStore();
+        const cachedKeys = await cacheStore.keys(PUBLICATIONS_FETCH_CACHE_PREFIX + '*', null);
+        await cacheStore.mdel(...cachedKeys);
     }
 }
