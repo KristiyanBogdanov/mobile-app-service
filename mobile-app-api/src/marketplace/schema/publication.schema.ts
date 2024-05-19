@@ -10,7 +10,16 @@ import { PricingOption, PublicationType } from '../enum';
 @Exclude()
 @Schema({
     collection: 'marketplace-publications',
-    versionKey: false
+    versionKey: false,
+    toObject: {
+        transform: (doc, ret) => {
+            ret.id = ret._id;
+            delete ret._id;
+
+            ret.publisher.id = ret.publisher._id;
+            delete ret.publisher._id;
+        }
+    }
 })
 export class Publication implements IPublication  {
     @Expose()
